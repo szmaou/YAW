@@ -1,0 +1,29 @@
+# YAW — MariaDB (development)
+# Default MariaDB port is 3306. The backend .env uses DB_PORT=3306.
+# Bring up with: docker compose up -d
+# Then run: backend/src/config/initDb (or mysql -h 127.0.0.1 -P 3306 ...)
+# Apply schema: docker exec -i yaw-db mariadb yaw -uyaw_user -pyaw123 < database/migrations/001_init.sql
+version: "3.8"
+
+services:
+  yaw-db:
+    image: mariadb:11.4
+    container_name: yaw-db
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MARIADB_DATABASE: yaw
+      MARIADB_USER: yaw_user
+      MARIADB_PASSWORD: yaw123
+      MARIADB_ROOT_PASSWORD: root123
+    volumes:
+      - yaw_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  yaw_data:
