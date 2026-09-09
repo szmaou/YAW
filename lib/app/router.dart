@@ -24,7 +24,7 @@ import '../features/admin/orders/presentation/pages/admin_orders_page.dart';
 /// Navigator's internal page key reservation).
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = ValueNotifier<int>(0);
-  ref.listen<AuthState>(authProvider, (_, __) => refresh.value++);
+  ref.listen(authProvider, (_, __) => refresh.value++);
   ref.onDispose(refresh.dispose);
   return GoRouter(
     refreshListenable: refresh,

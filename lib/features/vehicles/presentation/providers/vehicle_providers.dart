@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:yaw/core/network/api_client.dart';
 import 'package:yaw/features/vehicles/data/vehicle_repository.dart';
 import 'package:yaw/shared/models/vehicle.dart';
@@ -33,8 +34,10 @@ class VehicleListNotifier extends StateNotifier<VehicleListState> {
     state = state.copyWith(query:query);
     try {
       final res = await _repo.getVehicles(query);
+      if (!mounted) return;
       state = VehicleListState(data:res.data, page:res.page, total:res.total, isLoading:false, query:query);
     } catch (e) {
+      if (!mounted) return;
       state = state.copyWith(isLoading:false, error:e.toString());
     }
   }

@@ -1,6 +1,17 @@
 # YAW — Futuristic Automotive Marketplace
 
-> Flutter + REST API (Node.js + TypeScript + Express) + MariaDB. Desain dark futuristik untuk belajar full-stack.
+> Aplikasi Flutter bertemakan kendaraan — marketplace otomotif futuristik (Flutter + REST API Node.js + TypeScript + Express + MariaDB). Desain dark futuristik untuk belajar full-stack.
+
+## Kelompok 3
+
+Tugas: membuat aplikasi Flutter bertemakan kendaraan.
+
+Anggota kelompok:
+1. Hasan
+2. Fedly Pratama
+3. Ilham Makhrus Salam
+4. Farida Amelia Sholiha
+5. Shinta Ramadhani
 
 ## Quick start
 

@@ -3,8 +3,8 @@
 YAW = Flutter (Riverpod + GoRouter) + Node.js/Express + MariaDB automotive marketplace. Two projects in one repo: `lib/` (Flutter) and `backend/` (TypeScript). No monorepo tool, no `opencode.json`, no `CLAUDE.md`, no CI workflows.
 
 ## Stack & Layout
-- **Flutter** `^3.12.2` — `go_router ^15.1.2` (locked 15.1.3), `flutter_riverpod 2.6.1`, `dio 5.7.0`, `intl 0.20.2`. Assets: `assets/images/` `assets/icons/`.
-- **Backend** — `backend/src/app.ts` is entrypoint (`ts-node-dev --respawn --transpile-only src/app.ts`). Strict TS, target `ES2020`/`commonjs`, `outDir dist`.
+- **Flutter** (Dart `^3.12.0`, Flutter ≥3.44 for go_router 18) — `go_router ^18.0.1`, `flutter_riverpod ^3.4.3` (+ `riverpod_annotation ^4.0.7` / `riverpod_generator ^4.0.9` / `riverpod_lint ^3.1.9`), `dio ^5.7.0`, `intl 0.20.2`, `flutter_secure_storage ^11.0.0`, `google_fonts ^8.2.1`, `cached_network_image ^4.0.0`, `shimmer ^4.0.0`, `freezed ^4.0.1`. No `custom_lint` (removed — conflicts with riverpod_lint 3.x). Assets: `assets/images/` `assets/icons/`.
+- **Backend** — `backend/src/app.ts` is entrypoint (`tsx watch src/app.ts` dev, `tsc` build → `node dist/app.js`). Strict TS, target `ES2022`/`commonjs`, `outDir dist`. Express 5, helmet 8, dotenv 17, bcryptjs 3 (types bundled — no `@types/bcryptjs`), multer 2 (needs `@types/multer ^2.2.0`), zod 4, TS 7, `@types/node ^26`, `@types/express ^5`.
 - **DB** — MariaDB 11.4, 8 tables (`users`, `vehicle_categories`, `vehicles`, `vehicle_images`, `favorites`, `orders`, `order_items`, `payments`) in `database/migrations/001_init.sql`. `users.id` and all PKs are `BIGINT UNSIGNED`.
 
 ## Setup — Order Matters
@@ -25,7 +25,7 @@ npm run build && npm start  # production: tsc -> node dist/app.js
 flutter pub get && flutter run -d linux   # or -d chrome / android
 # demo login even without DB: admin@yaw.id/admin123; any email + password>=6 -> mock user
 ```
-`.env` is gitignored (`backend/.env`). `DB_PORT=3306` is canonical; `DB_SETUP.md` still mentions `3307` — ignore it. `ts-node-dev` does **not** watch `.env` — restart manually after env changes.
+`.env` is gitignored (`backend/.env`). `DB_PORT=3306` is canonical; `DB_SETUP.md` still mentions `3307` — ignore it. `tsx watch` does **not** watch `.env` — restart manually after env changes.
 
 ## Makefile — Canonical Shortcuts
 Run `make help` for the full list. Prefer `make <target>` over raw bash — the Makefile is the source of truth for ports, paths, and order.
@@ -54,9 +54,10 @@ curl -s -X POST http://localhost:3002/api/v1/auth/login -H 'Content-Type: applic
 ```
 
 ## Architecture — Not Obvious
-- **Router** `lib/app/router.dart`: `Provider<GoRouter>` with `ValueNotifier<int>(0)` as `refreshListenable` + `ref.listen<AuthState>(authProvider, (_,__)=>refresh.value++)` + `ref.read(authProvider)` in `redirect`. Do **not** hold `Ref` in a `ChangeNotifier` and do **not** `watch(authProvider)` inside the provider — that recreates `GoRouter` and triggers `Navigator !keyReservation.contains(key)` assertion.
-- **ShellRoute boundary**: `/admin/**` routes are **outside** `ShellRoute` (wrapping `AppShell`); `/home`, `/vehicles`, `/favorites`, `/orders`, `/profile` are inside. Crossing the boundary with `context.push` duplicates the Shell page key (`ValueKey(route.hashCode)` in go_router 15.1.3) and crashes. Use `context.go` for any admin↔user navigation.
-- **Admin CRUD** lives in `lib/features/admin/{vehicles,users,categories,orders}/` + `lib/features/admin/shared/admin_app_bar.dart`. Routes `/admin/vehicles`, `/admin/vehicles/new`, `/admin/vehicles/:id/edit`, `/admin/users`, `/admin/categories`, `/admin/orders` are outside the ShellRoute.
+- **Router** `lib/app/router.dart`: `Provider<GoRouter>` with `ValueNotifier<int>(0)` as `refreshListenable` + `ref.listen(authProvider, (_,__)=>refresh.value++)` + `ref.read(authProvider)` in `redirect`. Riverpod 3 removed `Ref` type params — `ref.listen<AuthState>` no longer compiles. Do **not** hold `Ref` in a `ChangeNotifier` and do **not** `watch(authProvider)` inside the provider — that recreates `GoRouter` and triggers `Navigator !keyReservation.contains(key)` assertion.
+- **ShellRoute**: all routes (user + `/admin/**`) are **inside** one `ShellRoute` (wrapping `AppShell`) so the sidebar stays visible on admin pages. `AppShell` is a `ConsumerWidget` watching `authProvider.isAdmin` — Admin tab appears before Profile only for admins, and `/admin/*` sub-routes highlight it. History: admin used to live outside the ShellRoute, where `context.push` across the boundary duplicated the Shell page key (`ValueKey(route.hashCode)`) and crashed — fix was `context.go`. Keep `context.go` for admin↔user navigation anyway.
+- **Admin CRUD** lives in `lib/features/admin/{vehicles,users,categories,orders}/` + `lib/features/admin/shared/admin_app_bar.dart`. Routes `/admin/dashboard`, `/admin/vehicles`, `/admin/vehicles/new`, `/admin/vehicles/:id/edit`, `/admin/users`, `/admin/categories`, `/admin/orders` are inside the ShellRoute. Non-admins hitting `/admin*` are redirected to `/home`.
+- **Riverpod 3**: `StateNotifierProvider` lives in `package:flutter_riverpod/legacy.dart` — providers using it (`auth`, `vehicleList`, `favorites`) must import legacy. `AsyncValue.valueOrNull` is renamed to `.value`. Guard async `ref` use with `if (!mounted) return` after `await` (`checkAuth`, `load`).
 - **Backend auth**: `auth()` checks `Bearer <JWT>` via `verify()`; `adminOnly` checks `role==='admin'`. `JWT_SECRET=yaw123` in `.env` is dev-only. Frontend `ApiClient` attaches token via `SecureStorage` interceptor; `AuthRepository` falls back to mock tokens (`mock_admin_token`/`mock_user_token`) on `DioException.connectionError` → those tokens fail JWT verify against a real DB. After DB becomes available, users must **logout + login** to replace the mock token with a real `eyJ...` JWT.
 - **Orders transaction**: `POST /orders` uses `pool.getConnection() → beginTransaction → SELECT ... FOR UPDATE → inserts → UPDATE stock → commit/rollback → release`. No stock check outside the transaction.
 

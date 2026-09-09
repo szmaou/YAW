@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../../../shared/models/user.dart';
@@ -37,8 +38,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
     try {
       final u = await _repo.me();
+      if (!mounted) return;
       state = AuthState(user:u, isLoading:false);
     } catch (_) {
+      if (!mounted) return;
       await _repo.logout();
       state = const AuthState(isLoading:false);
     }

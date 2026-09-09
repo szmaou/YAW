@@ -40,7 +40,7 @@ class _AdminVehicleFormPageState extends ConsumerState<AdminVehicleFormPage> {
     super.initState();
     if (widget.id != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        final v = ref.read(vehicleDetailProvider(widget.id!)).valueOrNull;
+        final v = ref.read(vehicleDetailProvider(widget.id!)).value;
         if (v != null) _populate(v);
       });
     }
