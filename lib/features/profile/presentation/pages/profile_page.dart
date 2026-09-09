@@ -49,7 +49,6 @@ class ProfilePage extends ConsumerWidget {
           _Tile(icon: Icons.edit_outlined, label: 'Edit Profil', onTap: ()=> _showEdit(context, ref)),
           _Tile(icon: Icons.receipt_long_outlined, label: 'Pesanan Saya', onTap: ()=> context.push('/orders')),
           _Tile(icon: Icons.favorite_border, label: 'Favorit', onTap: ()=> context.push('/favorites')),
-          if (u.isAdmin) _Tile(icon: Icons.dashboard_outlined, label: 'Admin Dashboard', trailing: const Icon(Icons.open_in_new, size:16), onTap: ()=> context.go('/admin/dashboard')),
           _Tile(icon: Icons.settings_outlined, label: 'Pengaturan', onTap: (){}),
           const SizedBox(height:14),
           OutlinedButton.icon(onPressed: () async { await ref.read(authProvider.notifier).logout(); if(context.mounted) context.go('/login'); }, icon: const Icon(Icons.logout_rounded, size:18), label: const Text('KELUAR'), style: OutlinedButton.styleFrom(foregroundColor: YawColors.error, side: const BorderSide(color: YawColors.error))),
@@ -79,8 +78,8 @@ class ProfilePage extends ConsumerWidget {
 }
 
 class _Tile extends StatelessWidget {
-  const _Tile({required this.icon, required this.label, this.onTap, this.trailing});
-  final IconData icon; final String label; final VoidCallback? onTap; final Widget? trailing;
+  const _Tile({required this.icon, required this.label, this.onTap});
+  final IconData icon; final String label; final VoidCallback? onTap;
   @override Widget build(BuildContext context)=> InkWell(
     onTap: onTap,
     borderRadius: BorderRadius.circular(12),
@@ -93,7 +92,7 @@ class _Tile extends StatelessWidget {
         const SizedBox(width:10),
         Expanded(child: Text(label, style: const TextStyle(fontSize:13, fontWeight: FontWeight.w600))),
         const SizedBox(width:8),
-        trailing ?? const Icon(Icons.chevron_right_rounded, size:18, color: YawColors.textDim),
+        const Icon(Icons.chevron_right_rounded, size:18, color: YawColors.textDim),
       ]),
     ),
   );
