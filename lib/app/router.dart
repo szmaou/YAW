@@ -55,15 +55,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(name: 'splash', path: '/', builder: (_, __) => const SplashPage()),
       GoRoute(name: 'login', path: '/login', builder: (_, __) => const LoginPage()),
       GoRoute(name: 'register', path: '/register', builder: (_, __) => const RegisterPage()),
-      // Admin outside shell
-      GoRoute(name: 'adminDashboard', path: '/admin/dashboard', builder: (_, __) => const AdminDashboardPage()),
-      GoRoute(name: 'admin', path: '/admin', redirect: (_, __) => '/admin/dashboard'),
-      GoRoute(name: 'adminVehicles', path: '/admin/vehicles', builder: (_, __) => const AdminVehiclesPage()),
-      GoRoute(name: 'adminVehicleNew', path: '/admin/vehicles/new', builder: (_, __) => const AdminVehicleFormPage()),
-      GoRoute(name: 'adminVehicleEdit', path: '/admin/vehicles/:id/edit', builder: (_, s) => AdminVehicleFormPage(id: s.pathParameters['id']!)),
-      GoRoute(name: 'adminUsers', path: '/admin/users', builder: (_, __) => const AdminUsersPage()),
-      GoRoute(name: 'adminCategories', path: '/admin/categories', builder: (_, __) => const AdminCategoriesPage()),
-      GoRoute(name: 'adminOrders', path: '/admin/orders', builder: (_, __) => const AdminOrdersPage()),
 
       ShellRoute(
         builder: (_, __, child) => AppShell(child: child),
@@ -75,6 +66,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(name: 'orders', path: '/orders', builder: (_, __) => const OrdersPage()),
           GoRoute(name: 'orderDetail', path: '/orders/:id', builder: (_, s) => OrderDetailPage(id: s.pathParameters['id']!)),
           GoRoute(name: 'profile', path: '/profile', builder: (_, __) => const ProfilePage()),
+          // Admin — now inside ShellRoute so sidebar stays visible and Admin is aligned with other tabs
+          GoRoute(name: 'adminDashboard', path: '/admin/dashboard', builder: (_, __) => const AdminDashboardPage()),
+          GoRoute(name: 'admin', path: '/admin', redirect: (_, __) => '/admin/dashboard'),
+          GoRoute(name: 'adminVehicles', path: '/admin/vehicles', builder: (_, __) => const AdminVehiclesPage()),
+          GoRoute(name: 'adminVehicleNew', path: '/admin/vehicles/new', builder: (_, __) => const AdminVehicleFormPage()),
+          GoRoute(name: 'adminVehicleEdit', path: '/admin/vehicles/:id/edit', builder: (_, s) => AdminVehicleFormPage(id: s.pathParameters['id']!)),
+          GoRoute(name: 'adminUsers', path: '/admin/users', builder: (_, __) => const AdminUsersPage()),
+          GoRoute(name: 'adminCategories', path: '/admin/categories', builder: (_, __) => const AdminCategoriesPage()),
+          GoRoute(name: 'adminOrders', path: '/admin/orders', builder: (_, __) => const AdminOrdersPage()),
         ],
       ),
     ],

@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../app/theme.dart';
 import '../../core/utils/responsive.dart';
+import '../../features/auth/presentation/providers/auth_provider.dart';
 
-class AppShell extends StatelessWidget {
+class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.child});
   final Widget child;
 
-  static const _tabs = [
+  static const _baseTabs = [
     (label: 'Home', icon: Icons.home_outlined, active: Icons.home_rounded, path: '/home'),
     (label: 'Vehicles', icon: Icons.directions_car_outlined, active: Icons.directions_car_rounded, path: '/vehicles'),
     (label: 'Favorites', icon: Icons.favorite_border, active: Icons.favorite_rounded, path: '/favorites'),
@@ -15,40 +17,67 @@ class AppShell extends StatelessWidget {
     (label: 'Profile', icon: Icons.person_outline, active: Icons.person_rounded, path: '/profile'),
   ];
 
-  int _index(BuildContext c) {
+  static const _adminTab = (
+    label: 'Admin',
+    icon: Icons.admin_panel_settings_outlined,
+    active: Icons.admin_panel_settings_rounded,
+    path: '/admin/dashboard',
+  );
+
+  List<({String label, IconData icon, IconData active, String path})> _tabsFor(bool isAdmin) {
+    if (!isAdmin) return _baseTabs;
+    // Admin appears before Profile, aligned with the other items.
+    return [..._baseTabs.take(4), _adminTab, _baseTabs.last];
+  }
+
+  int _index(BuildContext c, List<({String label, IconData icon, IconData active, String path})> tabs) {
     final loc = GoRouterState.of(c).uri.path;
-    for (var i = 0; i < _tabs.length; i++) {
-      if (loc.startsWith(_tabs[i].path)) return i;
+    for (var i = 0; i < tabs.length; i++) {
+      if (loc.startsWith(tabs[i].path)) return i;
+    }
+    // Admin sub-routes (/admin/vehicles, /admin/users, ...) highlight the Admin tab.
+    if (loc.startsWith('/admin')) {
+      final adminIdx = tabs.indexWhere((t) => t.path == '/admin/dashboard');
+      if (adminIdx != -1) return adminIdx;
     }
     return 0;
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isAdmin = ref.watch(authProvider).isAdmin;
+    final tabs = _tabsFor(isAdmin);
+    final idx = _index(context, tabs);
+
     if (Responsive.isDesktop(context)) {
       return Scaffold(
         body: Row(children: [
-          _Sidebar(index: _index(context)),
+          _Sidebar(index: idx, tabs: tabs),
           Expanded(child: child),
         ]),
       );
     }
-    final idx = _index(context);
     return Scaffold(
       body: child,
       bottomNavigationBar: NavigationBar(
-        selectedIndex: idx,
-        onDestinationSelected: (i) => context.go(_tabs[i].path),
-        destinations: _tabs.map((t) => NavigationDestination(
-          icon: Icon(t.icon), selectedIcon: Icon(t.active), label: t.label)).toList(),
+        selectedIndex: idx.clamp(0, tabs.length - 1),
+        onDestinationSelected: (i) => context.go(tabs[i].path),
+        destinations: tabs
+            .map((t) => NavigationDestination(
+                  icon: Icon(t.icon),
+                  selectedIcon: Icon(t.active),
+                  label: t.label,
+                ))
+            .toList(),
       ),
     );
   }
 }
 
 class _Sidebar extends StatelessWidget {
-  const _Sidebar({required this.index});
+  const _Sidebar({required this.index, required this.tabs});
   final int index;
+  final List<({String label, IconData icon, IconData active, String path})> tabs;
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -71,8 +100,8 @@ class _Sidebar extends StatelessWidget {
         const SizedBox(height: 8),
         const Padding(padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           child: Text('MENU', style: TextStyle(fontSize: 10, letterSpacing: 1.4, color: YawColors.textDim, fontWeight: FontWeight.w700))),
-        ...List.generate(AppShell._tabs.length, (i) {
-          final t = AppShell._tabs[i];
+        ...List.generate(tabs.length, (i) {
+          final t = tabs[i];
           final sel = i == index;
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
