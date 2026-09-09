@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:yaw/app/theme.dart';
+import 'package:yaw/core/utils/formatters.dart';
 import 'package:yaw/features/admin/shared/admin_app_bar.dart';
 import 'package:yaw/features/vehicles/presentation/providers/vehicle_providers.dart';
 import 'package:yaw/shared/models/vehicle.dart';
@@ -116,7 +117,7 @@ class _AdminVehicleFormPageState extends ConsumerState<AdminVehicleFormPage> {
         'brand': _brandCtrl.text.trim(),
         'model': _modelCtrl.text.trim(),
         'year': int.tryParse(_yearCtrl.text.trim()) ?? 0,
-        'price': double.tryParse(_priceCtrl.text.trim()) ?? 0,
+        'price': double.tryParse(_priceCtrl.text.trim().replaceAll('.', '')) ?? 0,
         'stock': int.tryParse(_stockCtrl.text.trim()) ?? 0,
         'description': _descCtrl.text.trim(),
         'engine': _engineCtrl.text.trim(),
@@ -264,8 +265,9 @@ class _AdminVehicleFormPageState extends ConsumerState<AdminVehicleFormPage> {
                             hint: '235000000',
                             prefix: const _PricePrefix(),
                             keyboardType: TextInputType.number,
+                            inputFormatters: const [NumberInputFormatter()],
                             validator: (v) =>
-                                (double.tryParse(v?.trim() ?? '') ?? 0) <= 0
+                                (double.tryParse(v?.trim().replaceAll('.', '') ?? '') ?? 0) <= 0
                                     ? 'Wajib angka valid'
                                     : null,
                             suffix: _priceCtrl.text.isNotEmpty
