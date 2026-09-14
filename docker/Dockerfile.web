@@ -1,0 +1,28 @@
+# YAW web — Flutter web build + nginx runtime
+# Build context = repo root. Dipakai dari docker-compose.prod.yml:
+#   build: { context: ., dockerfile: docker/Dockerfile.web,
+#            args: { API_BASE_URL, BASE_HREF } }
+FROM ghcr.io/cirruslabs/flutter:stable AS webbuild
+WORKDIR /app
+
+# API_BASE_URL wajib (tanpa default rahasia) — gagalkan build bila kosong.
+ARG API_BASE_URL
+ARG BASE_HREF=/
+RUN test -n "$API_BASE_URL" || (echo "ARG API_BASE_URL kosong — isi API_BASE_URL di .env.prod" >&2; exit 1)
+
+COPY pubspec.yaml ./
+COPY lib ./lib
+COPY web ./web
+COPY assets ./assets
+RUN flutter pub get && \
+    if [ "$BASE_HREF" = "/" ]; then \
+      flutter build web --release --dart-define=API_BASE_URL=$API_BASE_URL; \
+    else \
+      flutter build web --release --dart-define=API_BASE_URL=$API_BASE_URL --base-href "$BASE_HREF"; \
+    fi
+
+FROM nginx:alpine AS runtime
+COPY --from=webbuild /app/build/web /usr/share/nginx/html
+COPY docker/nginx-web.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

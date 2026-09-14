@@ -9,9 +9,10 @@ class AppConstants {
 class ApiConstants {
   ApiConstants._();
   // Backend sesuai backend/.env → APP_PORT=3002
-  // Android emulator: http://10.0.2.2:3002/api/v1
-  // Web/desktop: http://localhost:3002/api/v1
-  static const String baseUrl = 'http://localhost:3002/api/v1';
+  // Local dev default: http://localhost:3002/api/v1
+  // Web release: flutter build web --release --dart-define=API_BASE_URL=https://<domain>/api/v1
+  // Android emulator APK: --dart-define=API_BASE_URL=http://10.0.2.2:3002/api/v1
+  static const String baseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:3002/api/v1');
   static const Duration connectTimeout = Duration(seconds: 15);
   static const Duration receiveTimeout = Duration(seconds: 15);
 
