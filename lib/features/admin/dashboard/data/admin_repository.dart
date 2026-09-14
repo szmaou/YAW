@@ -5,6 +5,7 @@ import 'package:yaw/core/errors/exceptions.dart';
 import 'package:yaw/core/network/api_client.dart';
 import 'package:yaw/features/auth/presentation/providers/auth_provider.dart';
 import 'package:yaw/shared/models/order.dart';
+import 'package:yaw/shared/models/vehicle.dart';
 
 /// Aggregated snapshot returned by `GET /admin/dashboard`.
 class AdminDashboardData {
@@ -27,12 +28,12 @@ class AdminDashboardData {
   final List<Order> recentOrders;
 
   factory AdminDashboardData.fromJson(Map<String, dynamic> j) => AdminDashboardData(
-        totalVehicles: (j['totalVehicles'] as num?)?.toInt() ?? 0,
-        totalUsers: (j['totalUsers'] as num?)?.toInt() ?? 0,
-        totalOrders: (j['totalOrders'] as num?)?.toInt() ?? 0,
-        totalRevenue: j['totalRevenue'] ?? 0,
-        pendingOrders: (j['pendingOrders'] as num?)?.toInt() ?? 0,
-        completedOrders: (j['completedOrders'] as num?)?.toInt() ?? 0,
+        totalVehicles: asInt(j['totalVehicles']),
+        totalUsers: asInt(j['totalUsers']),
+        totalOrders: asInt(j['totalOrders']),
+        totalRevenue: asNum(j['totalRevenue']),
+        pendingOrders: asInt(j['pendingOrders']),
+        completedOrders: asInt(j['completedOrders']),
         recentOrders: j['recentOrders'] is List
             ? (j['recentOrders'] as List)
                 .map((e) => Order.fromJson(Map<String, dynamic>.from(e)))
@@ -50,8 +51,8 @@ class MonthlyStat {
 
   factory MonthlyStat.fromJson(Map<String, dynamic> j) => MonthlyStat(
         month: j['month']?.toString() ?? '',
-        orders: (j['orders'] as num?)?.toInt() ?? 0,
-        revenue: j['revenue'] ?? 0,
+        orders: asInt(j['orders']),
+        revenue: asNum(j['revenue']),
       );
 }
 

@@ -19,16 +19,16 @@ class OrderItem {
         slug: j['slug'] ?? '',
         brand: j['brand'] ?? '',
         model: j['model'] ?? '',
-        year: (j['year'] as num?)?.toInt() ?? 0,
-        price: (j['price'] as num?)?.toDouble() ?? 0,
-        stock: (j['stock'] as num?)?.toInt() ?? 0,
+        year: asInt(j['year']),
+        price: asDouble(j['price']),
+        stock: asInt(j['stock']),
         images: j['image'] != null ? [j['image'].toString()] : const [],
       );
     }
     return OrderItem(
       vehicle: v,
-      quantity: (j['quantity'] as num?)?.toInt() ?? 0,
-      price: (j['price'] as num?)?.toDouble() ?? 0,
+      quantity: asInt(j['quantity']),
+      price: asDouble(j['price']),
     );
   }
 }
@@ -68,7 +68,7 @@ class Order {
         id: j['id'].toString(),
         orderNumber: j['order_number'] ?? '',
         status: j['status'] ?? 'pending',
-        total: ((j['total_amount'] ?? j['total']) as num?)?.toDouble() ?? 0,
+        total: asDouble(j['total_amount'] ?? j['total']),
         items: j['items'] is List
             ? (j['items'] as List).map((e) => OrderItem.fromJson(Map<String, dynamic>.from(e))).toList()
             : [],

@@ -24,13 +24,45 @@ class Vehicle {
   factory Vehicle.fromJson(Map<String,dynamic> j) => Vehicle(
     id: j['id'].toString(), categoryId: (j['category_id']??j['categoryId']??'').toString(),
     name: j['name']??'', slug: j['slug']??'', brand: j['brand']??'', model: j['model']??'',
-    year: (j['year'] as num?)?.toInt()??0, price: (j['price'] as num?)?.toDouble()??0,
-    stock: (j['stock'] as num?)?.toInt()??0, description: j['description'],
+    year: asInt(j['year']), price: asDouble(j['price']),
+    stock: asInt(j['stock']), description: j['description'],
     engine: j['engine'], transmission: j['transmission'], fuelType: j['fuel_type']??j['fuelType'],
-    color: j['color'], isAvailable: j['is_available']??j['isAvailable']??true,
+    color: j['color'], isAvailable: asBool(j['is_available']??j['isAvailable'], true),
     images: ((j['images']??j['image_urls']) is List) ? List<String>.from((j['images']??j['image_urls']).map((e)=> e is String? e : e['image_url']?.toString()??'')) : <String>[],
     category: j['category']!=null ? VehicleCategory.fromJson(j['category']) : null,
   );
+}
+
+/// Backend (MariaDB BIGINT/DECIMAL) bisa mengembalikan angka sebagai String.
+/// Helper ini menerima num maupun String agar fromJson tidak crash.
+/// Dipakai juga oleh order.dart dan admin_repository.dart lewat import vehicle.dart.
+int asInt(dynamic v) {
+  if (v is num) return v.toInt();
+  if (v is String) return int.tryParse(v.trim()) ?? 0;
+  return 0;
+}
+
+double asDouble(dynamic v) {
+  if (v is num) return v.toDouble();
+  if (v is String) return double.tryParse(v.trim()) ?? 0;
+  return 0;
+}
+
+num asNum(dynamic v) {
+  if (v is num) return v;
+  if (v is String) return num.tryParse(v.trim()) ?? 0;
+  return 0;
+}
+
+bool asBool(dynamic v, bool fallback) {
+  if (v is bool) return v;
+  if (v is num) return v != 0;
+  if (v is String) {
+    final t = v.trim().toLowerCase();
+    if (t == '1' || t == 'true') return true;
+    if (t == '0' || t == 'false') return false;
+  }
+  return fallback;
 }
 
 class Paginated<T> {
