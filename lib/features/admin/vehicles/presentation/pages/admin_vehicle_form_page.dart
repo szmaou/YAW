@@ -263,6 +263,20 @@ class _AdminVehicleFormPageState extends ConsumerState<AdminVehicleFormPage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       _buildSection(
+                        title: 'Media',
+                        icon: Icons.photo_library_outlined,
+                        children: [
+                          if (_images.isEmpty && _pendingUploads.isEmpty)
+                            _emptyImagesHint()
+                          else ...[
+                            _imageGrid(),
+                            const SizedBox(height: 12),
+                          ],
+                          _galleryBtn(),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      _buildSection(
                         title: 'Informasi Dasar',
                         icon: Icons.directions_car_outlined,
                         children: [
@@ -488,20 +502,6 @@ class _AdminVehicleFormPageState extends ConsumerState<AdminVehicleFormPage> {
                               ],
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      _buildSection(
-                        title: 'Media',
-                        icon: Icons.photo_library_outlined,
-                        children: [
-                          if (_images.isEmpty && _pendingUploads.isEmpty)
-                            _emptyImagesHint()
-                          else ...[
-                            _imageGrid(),
-                            const SizedBox(height: 12),
-                          ],
-                          _galleryBtn(),
                         ],
                       ),
                       const SizedBox(height: 20),
