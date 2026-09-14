@@ -13,7 +13,7 @@ class ProfilePage extends ConsumerWidget {
 
     if (u == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('PROFILE'), bottom: PreferredSize(preferredSize: const Size.fromHeight(1), child: Container(height:1,color:YawColors.border))),
+appBar: AppBar(title: const Text('ACCOUNT'), bottom: PreferredSize(preferredSize: const Size.fromHeight(1), child: Container(height:1,color:YawColors.border))),
         body: Center(child: Column(mainAxisSize: MainAxisSize.min, children:[
           const Icon(Icons.person_outline, size:48, color: YawColors.textDim),
           const SizedBox(height:12),
@@ -25,7 +25,7 @@ class ProfilePage extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('PROFILE'), bottom: PreferredSize(preferredSize: const Size.fromHeight(1), child: Container(height:1,color:YawColors.border))),
+      appBar: AppBar(title: const Text('ACCOUNT'), bottom: PreferredSize(preferredSize: const Size.fromHeight(1), child: Container(height:1,color:YawColors.border))),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [

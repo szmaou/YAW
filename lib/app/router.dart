@@ -12,6 +12,7 @@ import '../features/vehicles/presentation/pages/vehicle_detail_page.dart';
 import '../features/favorites/presentation/pages/favorites_page.dart';
 import '../features/orders/presentation/pages/orders_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
+import '../features/profile/presentation/pages/profiles_page.dart';
 import '../features/admin/dashboard/presentation/admin_dashboard_page.dart';
 import '../features/admin/vehicles/presentation/pages/admin_vehicles_page.dart';
 import '../features/admin/vehicles/presentation/pages/admin_vehicle_form_page.dart';
@@ -39,8 +40,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (loading) return null;
       if (isSplash) return loggedIn ? '/home' : '/login';
       if (!loggedIn && !isAuthRoute && !loc.startsWith('/vehicles')) {
-        // allow browsing vehicles without login, but protect fav/orders/profile/admin
-        if (loc.startsWith('/favorites') || loc.startsWith('/orders') || loc.startsWith('/profile') || loc.startsWith('/admin')) {
+        // allow browsing vehicles without login, but protect fav/orders/account/profiles/admin
+        if (loc.startsWith('/favorites') || loc.startsWith('/orders') || loc.startsWith('/account') || loc.startsWith('/profiles') || loc.startsWith('/admin')) {
           return '/login';
         }
       }
@@ -65,7 +66,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(name: 'favorites', path: '/favorites', builder: (_, __) => const FavoritesPage()),
           GoRoute(name: 'orders', path: '/orders', builder: (_, __) => const OrdersPage()),
           GoRoute(name: 'orderDetail', path: '/orders/:id', builder: (_, s) => OrderDetailPage(id: s.pathParameters['id']!)),
-          GoRoute(name: 'profile', path: '/profile', builder: (_, __) => const ProfilePage()),
+          GoRoute(name: 'account', path: '/account', builder: (_, __) => const ProfilePage()),
+          GoRoute(name: 'profileLegacy', path: '/profile', redirect: (_, __) => '/account'),
+          GoRoute(name: 'accountProfilesLegacy', path: '/account/profiles', redirect: (_, __) => '/profiles'),
+          GoRoute(name: 'profiles', path: '/profiles', builder: (_, __) => const ProfilesPage()),
           // Admin — now inside ShellRoute so sidebar stays visible and Admin is aligned with other tabs
           GoRoute(name: 'adminDashboard', path: '/admin/dashboard', builder: (_, __) => const AdminDashboardPage()),
           GoRoute(name: 'admin', path: '/admin', redirect: (_, __) => '/admin/dashboard'),

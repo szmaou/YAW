@@ -24,7 +24,7 @@ class HomePage extends ConsumerWidget {
             const Text('YAW', style: TextStyle(letterSpacing: 4, fontSize: 16)),
             const Spacer(),
             IconButton(onPressed: ()=> context.push('/vehicles'), icon: const Icon(Icons.search_rounded)),
-            IconButton(onPressed: ()=> context.push('/profile'), icon: const Icon(Icons.person_outline)),
+            IconButton(onPressed: ()=> context.push('/account'), icon: const Icon(Icons.person_outline)),
           ]),
           bottom: PreferredSize(preferredSize: const Size.fromHeight(1), child: Container(height:1, color: YawColors.border)),
         ),

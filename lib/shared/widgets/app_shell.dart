@@ -14,7 +14,8 @@ class AppShell extends ConsumerWidget {
     (label: 'Vehicles', icon: Icons.directions_car_outlined, active: Icons.directions_car_rounded, path: '/vehicles'),
     (label: 'Favorites', icon: Icons.favorite_border, active: Icons.favorite_rounded, path: '/favorites'),
     (label: 'Orders', icon: Icons.receipt_long_outlined, active: Icons.receipt_long_rounded, path: '/orders'),
-    (label: 'Profile', icon: Icons.person_outline, active: Icons.person_rounded, path: '/profile'),
+    (label: 'Account', icon: Icons.person_outline, active: Icons.person_rounded, path: '/account'),
+    (label: 'Profiles', icon: Icons.groups_outlined, active: Icons.groups_rounded, path: '/profiles'),
   ];
 
   static const _adminTab = (
@@ -26,8 +27,8 @@ class AppShell extends ConsumerWidget {
 
   List<({String label, IconData icon, IconData active, String path})> _tabsFor(bool isAdmin) {
     if (!isAdmin) return _baseTabs;
-    // Admin appears before Profile, aligned with the other items.
-    return [..._baseTabs.take(4), _adminTab, _baseTabs.last];
+    // Admin inserted after Orders; Account + Profiles follow at the end.
+    return [..._baseTabs.take(4), _adminTab, ..._baseTabs.skip(4)];
   }
 
   int _index(BuildContext c, List<({String label, IconData icon, IconData active, String path})> tabs) {

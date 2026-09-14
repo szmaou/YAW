@@ -43,7 +43,7 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
         ),
         actions: [
           IconButton(
-            onPressed: () => context.go('/profile'),
+            onPressed: () => context.go('/account'),
             icon: const Icon(Icons.person_outline),
           ),
         ],

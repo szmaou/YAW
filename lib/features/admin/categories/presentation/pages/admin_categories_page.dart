@@ -40,7 +40,7 @@ class _AdminCategoriesPageState extends ConsumerState<AdminCategoriesPage> {
         title: const Text('KELOLA KATEGORI'),
         leading: IconButton(icon: const Icon(Icons.arrow_back_rounded), onPressed: () => context.go('/admin/dashboard')),
         actions: [
-          IconButton(icon: const Icon(Icons.person_outline), onPressed: () => context.go('/profile')),
+          IconButton(icon: const Icon(Icons.person_outline), onPressed: () => context.go('/account')),
         ],
         bottom: PreferredSize(preferredSize: const Size.fromHeight(1), child: Container(height: 1, color: YawColors.border)),
       ),

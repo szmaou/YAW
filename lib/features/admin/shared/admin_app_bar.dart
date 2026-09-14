@@ -31,7 +31,7 @@ class AdminAppBar extends StatelessWidget implements PreferredSizeWidget {
       actions: [
         ...?actions,
         IconButton(
-          onPressed: () => context.go('/profile'),
+          onPressed: () => context.go('/account'),
           icon: const Icon(Icons.person_outline),
         ),
       ],
