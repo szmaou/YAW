@@ -6,7 +6,8 @@ plugins {
 
 android {
     namespace = "com.example.yaw"
-    compileSdk = flutter.compileSdkVersion
+    // flutter_secure_storage requires compileSdk 37; Flutter 3.47.2 hardcodes 36.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

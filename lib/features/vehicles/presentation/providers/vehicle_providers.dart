@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import 'package:yaw/core/network/api_client.dart';
 import 'package:yaw/features/vehicles/data/vehicle_repository.dart';
 import 'package:yaw/shared/models/vehicle.dart';
 import 'package:yaw/features/auth/presentation/providers/auth_provider.dart';

@@ -90,7 +90,7 @@ class _S extends ConsumerState<VehicleListPage> {
             ]),
             const SizedBox(height:10),
             Row(children: [
-              Expanded(child: OutlinedButton(onPressed: (){ setState(()=> {_brand=null,_fuel=null,_trans=null,_min=null,_max=null,_cat=null}); _searchCtrl.clear(); _apply();}, child: const Text('RESET'))),
+              Expanded(child: OutlinedButton(onPressed: (){ setState(()=> _brand=null); setState(()=> _fuel=null); setState(()=> _trans=null); setState(()=> _min=null); setState(()=> _max=null); setState(()=> _cat=null); _searchCtrl.clear(); _apply();}, child: const Text('RESET'))),
               const SizedBox(width:8),
               Expanded(child: ElevatedButton(onPressed: _apply, child: const Text('TERAPKAN'))),
             ]),
