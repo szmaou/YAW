@@ -15,15 +15,6 @@ class _Developer {
 
 const _developers = <_Developer>[
   _Developer(
-    name: 'Farida Amelia Sholiha',
-    image: 'assets/images/profiles/farida.jpeg',
-    desc:
-        'Saya adalah Farida Amelia Sholiha, siswi kelas XII PPLG 1 yang memiliki minat dalam bidang teknologi dan pemrograman. '
-        'Saya senang mempelajari hal-hal baru. Saya juga terus berusaha mengembangkan kemampuan dan kreativitas untuk menjadi lebih baik lagi. '
-        'Di luar teknologi saya juga memiliki hobi beternak dan senang merawat hewan. '
-        'Bagi saya kegiatan tersebut mengajarkan tanggung jawab, kesabaran, dan ketekunan.',
-  ),
-  _Developer(
     name: 'Hasan',
     image: 'assets/images/profiles/hasan.png',
     desc:
@@ -31,6 +22,13 @@ const _developers = <_Developer>[
         'Selain di dunia software, saya juga memiliki ketertarikan pada sisi hardware, mulai dari perakitan PC hingga bereksperimen '
         'dengan berbagai Project Microcontroller.',
     link: 'https://hasan.cnp.my.id/',
+  ),
+  _Developer(
+    name: 'Fedly Pratama',
+    image: 'assets/images/profiles/fedly.jpeg',
+    desc:
+        'Saya adalah seorang pelajar yang tertarik dengan dunia teknologi dan pemrograman. '
+        'Saya senang mempelajari hal-hal baru, membuat website, serta mengembangkan kemampuan dalam bidang teknologi informasi.',
   ),
   _Developer(
     name: 'Ilham Makhrus Salam',
@@ -41,11 +39,13 @@ const _developers = <_Developer>[
         'yang efisien, skalabel, dan user-friendly',
   ),
   _Developer(
-    name: 'Pedly Pratama',
-    image: 'assets/images/profiles/pedly.jpeg',
+    name: 'Farida Amelia Sholiha',
+    image: 'assets/images/profiles/farida.jpeg',
     desc:
-        'Saya adalah seorang pelajar yang tertarik dengan dunia teknologi dan pemrograman. '
-        'Saya senang mempelajari hal-hal baru, membuat website, serta mengembangkan kemampuan dalam bidang teknologi informasi.',
+        'Saya adalah Farida Amelia Sholiha, siswi kelas XII PPLG 1 yang memiliki minat dalam bidang teknologi dan pemrograman. '
+        'Saya senang mempelajari hal-hal baru. Saya juga terus berusaha mengembangkan kemampuan dan kreativitas untuk menjadi lebih baik lagi. '
+        'Di luar teknologi saya juga memiliki hobi beternak dan senang merawat hewan. '
+        'Bagi saya kegiatan tersebut mengajarkan tanggung jawab, kesabaran, dan ketekunan.',
   ),
   _Developer(
     name: 'Shinta Ramadhani',
