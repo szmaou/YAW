@@ -13,8 +13,8 @@ class LoginPage extends ConsumerStatefulWidget {
 }
 class _S extends ConsumerState<LoginPage> {
   final _form = GlobalKey<FormState>();
-  final _email = TextEditingController(text: 'admin@yaw.id');
-  final _pass = TextEditingController(text: 'admin123');
+  final _email = TextEditingController(text: '');
+  final _pass = TextEditingController(text: '');
   bool _obscure = true;
   bool _loading = false;
   String? _err;
@@ -63,9 +63,6 @@ class _S extends ConsumerState<LoginPage> {
                   Align(alignment: Alignment.centerRight, child: TextButton(onPressed: (){}, child: const Text('Lupa password?', style: TextStyle(color: YawColors.primary, fontSize: 12)))),
                   const SizedBox(height: 8),
                   YawButton(label: 'MASUK', isLoading: _loading, onPressed: _submit, expand: true, icon: Icons.arrow_forward_rounded),
-                  const SizedBox(height: 10),
-                  Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: YawColors.surface2, borderRadius: BorderRadius.circular(10), border: Border.all(color: YawColors.border)),
-                    child: const Text('Demo: admin@yaw.id / admin123  •  user apapun dengan pass >=6 karakter (mock offline)', style: TextStyle(fontSize: 11, color: YawColors.textMuted), textAlign: TextAlign.center)),
                 ])),
               ),
               const SizedBox(height: 16),

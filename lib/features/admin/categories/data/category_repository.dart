@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yaw/core/constants/app_constants.dart';
 import 'package:yaw/core/errors/exceptions.dart';
 import 'package:yaw/core/network/api_client.dart';
-import 'package:yaw/core/network/mock_data.dart';
 import 'package:yaw/features/auth/presentation/providers/auth_provider.dart';
 import 'package:yaw/shared/models/vehicle.dart';
 
@@ -12,14 +11,10 @@ class CategoryRepository {
   final ApiClient _api;
 
   Future<List<VehicleCategory>> getCategories() async {
-    try {
-      final r = await _api.dio.get(ApiConstants.categories);
-      final data = r.data;
-      final List list = data is List ? data : data['data'] as List;
-      return list.map((e) => VehicleCategory.fromJson(Map<String, dynamic>.from(e))).toList();
-    } catch (_) {
-      return MockData.categories;
-    }
+    final r = await _api.dio.get(ApiConstants.categories);
+    final data = r.data;
+    final List list = data is List ? data : data['data'] as List;
+    return list.map((e) => VehicleCategory.fromJson(Map<String, dynamic>.from(e))).toList();
   }
 
   Future<VehicleCategory> createCategory(String name, String? description) async {

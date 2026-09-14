@@ -6,8 +6,6 @@ import '../../../../core/utils/responsive.dart';
 import '../../../../core/widgets/app_error_view.dart';
 import '../../../../shared/widgets/vehicle_card.dart';
 import '../../../vehicles/presentation/providers/vehicle_providers.dart';
-import '../../../vehicles/data/vehicle_repository.dart';
-import '../../../../core/network/mock_data.dart';
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
@@ -30,7 +28,7 @@ class HomePage extends ConsumerWidget {
           ]),
           bottom: PreferredSize(preferredSize: const Size.fromHeight(1), child: Container(height:1, color: YawColors.border)),
         ),
-        SliverToBoxAdapter(child: _Hero(onExplore: ()=> context.go('/vehicles'))),
+        SliverToBoxAdapter(child: _Hero(onExplore: ()=> context.go('/vehicles'), heroImageUrl: veh.data.isNotEmpty ? veh.data.first.primaryImage : null)),
         SliverToBoxAdapter(child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
           child: Row(children: [
@@ -101,8 +99,9 @@ class HomePage extends ConsumerWidget {
 }
 
 class _Hero extends StatelessWidget {
-  const _Hero({required this.onExplore});
+  const _Hero({required this.onExplore, this.heroImageUrl});
   final VoidCallback onExplore;
+  final String? heroImageUrl;
   @override
   Widget build(BuildContext context) {
     final isMobile = Responsive.isMobile(context);
@@ -135,7 +134,12 @@ class _Hero extends StatelessWidget {
           if (!isMobile) ...[
             const SizedBox(width:24),
             Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(16),
-              child: AspectRatio(aspectRatio: 1.4, child: Image.network(MockData.vehicles.first.primaryImage, fit: BoxFit.cover, errorBuilder: (_,__,___)=> Container(color: YawColors.surface2, child: const Icon(Icons.directions_car_rounded, size:48, color: YawColors.textDim))))),
+              child: AspectRatio(
+                aspectRatio: 1.4,
+                child: (heroImageUrl != null && heroImageUrl!.isNotEmpty)
+                  ? Image.network(heroImageUrl!, fit: BoxFit.cover, errorBuilder: (_,__,___)=> Container(color: YawColors.surface2, child: const Icon(Icons.directions_car_rounded, size:48, color: YawColors.textDim)))
+                  : Container(color: YawColors.surface2, child: const Icon(Icons.directions_car_rounded, size:48, color: YawColors.textDim)),
+              )),
             ),
           ]
         ]),

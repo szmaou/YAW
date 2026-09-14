@@ -1,4 +1,3 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../../core/network/api_client.dart';
@@ -10,16 +9,27 @@ class FavoritesRepo {
   Set<String> get ids => _ids;
 
   Future<void> toggle(String id) async {
+    final wasFav = _ids.contains(id);
+    // Optimistic update so UI feels instant.
+    if (wasFav) {
+      _ids.remove(id);
+    } else {
+      _ids.add(id);
+    }
     try {
-      if (_ids.contains(id)) {
+      if (wasFav) {
         await api.dio.delete('/favorites/$id');
-        _ids.remove(id);
       } else {
         await api.dio.post('/favorites', data: {'vehicle_id': id});
-        _ids.add(id);
       }
-    } catch (_) {
-      if (_ids.contains(id)) _ids.remove(id); else _ids.add(id);
+    } catch (e) {
+      // Revert optimistic update — never silently succeed offline.
+      if (wasFav) {
+        _ids.add(id);
+      } else {
+        _ids.remove(id);
+      }
+      rethrow;
     }
   }
 }

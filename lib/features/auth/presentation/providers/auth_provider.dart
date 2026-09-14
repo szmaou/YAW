@@ -28,14 +28,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(isLoading:true, clearError:true);
     final token = await _repo.getToken();
     if (token==null || token.isEmpty) { state = const AuthState(isLoading:false); return; }
-    if (token.startsWith('mock_')) {
-      if (token=='mock_admin_token') {
-        state = const AuthState(user: User(id:'admin1', name:'YAW Admin', email:'admin@yaw.id', role:'admin'), isLoading:false);
-      } else {
-        state = const AuthState(user: User(id:'u1', name:'User', email:'user@yaw.id', role:'user'), isLoading:false);
-      }
-      return;
-    }
     try {
       final u = await _repo.me();
       if (!mounted) return;
