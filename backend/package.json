@@ -1,6 +1,6 @@
 {
   "name": "yaw-backend",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "YAW REST API — Node.js + TypeScript + Express + MariaDB",
   "main": "dist/app.js",
   "scripts": {
