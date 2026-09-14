@@ -71,7 +71,7 @@ class ProfilePage extends ConsumerWidget {
           const SizedBox(height:12),
           TextField(controller: phoneCtrl, decoration: const InputDecoration(labelText:'No. HP')),
           const SizedBox(height:16),
-          ElevatedButton(onPressed: (){ Navigator.pop(c); ScaffoldMessenger.of(c).showSnackBar(const SnackBar(content: Text('Profil diperbarui (mock)'))); }, child: const Text('SIMPAN')),
+          ElevatedButton(onPressed: (){ Navigator.pop(c); ScaffoldMessenger.of(c).showSnackBar(const SnackBar(content: Text('Tidak dapat terhubung ke server'))); }, child: const Text('SIMPAN')),
           const SizedBox(height:16),
         ])));
   }

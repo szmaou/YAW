@@ -26,10 +26,6 @@ class AuthRepository {
       await _storage.write(StorageKeys.userJson, '${ar.user.id}|${ar.user.name}|${ar.user.email}|${ar.user.role}');
       return ar;
     } on DioException catch (e) {
-      // fallback mock for demo/offline
-      if (e.type==DioExceptionType.connectionError || e.type==DioExceptionType.connectionTimeout) {
-        return _mockLogin(email, password);
-      }
       final m = e.response?.data is Map ? e.response?.data['message']?.toString() : null;
       throw m ?? _msg(e);
     }
@@ -42,12 +38,6 @@ class AuthRepository {
       await _storage.write(StorageKeys.token, ar.token);
       return ar;
     } on DioException catch (e) {
-      if (e.type==DioExceptionType.connectionError || e.type==DioExceptionType.connectionTimeout) {
-        // mock register
-        final token = 'mock_${DateTime.now().millisecondsSinceEpoch}';
-        await _storage.write(StorageKeys.token, token);
-        return AuthResponse(user: User(id:'u1', name:name, email:email, phone:phone, role:'user'), token: token);
-      }
       final m = e.response?.data is Map ? e.response?.data['message']?.toString() : null;
       throw m ?? _msg(e);
     }
@@ -66,20 +56,5 @@ class AuthRepository {
     if (e.type==DioExceptionType.connectionError) return 'Tidak dapat terhubung ke server. Periksa koneksi.';
     if (e.type==DioExceptionType.receiveTimeout || e.type==DioExceptionType.sendTimeout) return 'Server timeout. Coba lagi.';
     return e.message ?? 'Terjadi kesalahan';
-  }
-
-  Future<AuthResponse> _mockLogin(String email, String password) async {
-    await Future.delayed(const Duration(milliseconds: 600));
-    if (email=='admin@yaw.id' && password=='admin123') {
-      const u = User(id:'admin1', name:'YAW Admin', email:'admin@yaw.id', role:'admin');
-      const t = 'mock_admin_token';
-      await _storage.write(StorageKeys.token, t);
-      return const AuthResponse(user:u, token:t);
-    }
-    if (password.length < 6) throw 'Password minimal 6 karakter';
-    final u = User(id:'u1', name: email.split('@').first, email:email, role:'user');
-    const t = 'mock_user_token';
-    await _storage.write(StorageKeys.token, t);
-    return AuthResponse(user:u, token:t);
   }
 }
