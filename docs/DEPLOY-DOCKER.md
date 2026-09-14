@@ -133,3 +133,18 @@ Restore: `tar xzf <file> -C` ke volume kosong yang di-mount ke `/data`.
 | Port 80 bentrok | nginx host / service lain | hentikan pemakai lama atau mapping ulang `ports` di `docker-compose.prod.yml` |
 | Agak berat saat build web | Flutter build memang besar | wajar (image cirruslabs + `flutter build web --release`); jangan build di VPS 1GB tanpa swap |
 | `compileSdk` / AGP error | SUDAH DIPERBAIKI — bukan isu deploy Docker | abaikan untuk deploy web+backend ini (hanya relevan untuk build APK lama) |
+
+## 9. Build APK/IPA release (mobile)
+
+Build mobile terpisah dari Docker web — jalankan di workstation (bukan server):
+
+| Target | Perintah | Output |
+| --- | --- | --- |
+| **APK rilis** | `flutter build apk --release --dart-define=API_BASE_URL=https://<domain>/api/v1` | `build/app/outputs/flutter-apk/app-release.apk` |
+| **App Bundle (Play Store)** | `flutter build appbundle --release --dart-define=API_BASE_URL=https://<domain>/api/v1` | `build/app/outputs/bundle/release/app-release.aab` |
+| **Android emulator (dev)** | `flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3002/api/v1` | — (hot reload, localhost via 10.0.2.2) |
+| **iOS IPA rilis** | `flutter build ipa --release --dart-define=API_BASE_URL=https://<domain>/api/v1` | `build/ios/ipa/app.ipa` (butuh Apple Developer, codesign, provisioning) |
+
+> **HTTPS wajib untuk production mobile** — Android cleartext traffic + iOS ATS memblokir `http://` tanpa exception. Repo **tidak** menambahkan `android:usesCleartextTraffic` atau `NSAppTransportSecurity` exception. Gunakan `https://<domain>/api/v1` (domain dengan TLS valid) untuk build rilis. Emulator dev boleh `http://10.0.2.2:3002/api/v1`.
+
+> **compileSdk 37 / AGP 9.1.1**: Sudah dikonfigurasi di repo (`android/build.gradle.kts`, `android/app/build.gradle.kts`). Tidak perlu tindakan tambahan.
