@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../app/theme.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../core/widgets/app_error_view.dart';
 import '../../../../shared/widgets/vehicle_card.dart';
@@ -28,7 +29,7 @@ class HomePage extends ConsumerWidget {
           ]),
           bottom: PreferredSize(preferredSize: const Size.fromHeight(1), child: Container(height:1, color: YawColors.border)),
         ),
-        SliverToBoxAdapter(child: _Hero(onExplore: ()=> context.go('/vehicles'), heroImageUrl: veh.data.isNotEmpty ? veh.data.first.primaryImage : null)),
+        SliverToBoxAdapter(child: _Hero(onExplore: ()=> context.go('/vehicles'), heroImageUrl: veh.data.isNotEmpty ? ApiConstants.resolveImageUrl(veh.data.first.primaryImage) : null)),
         SliverToBoxAdapter(child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
           child: Row(children: [

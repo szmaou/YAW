@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/errors/exceptions.dart';
@@ -60,6 +61,40 @@ class VehicleRepository {
       return Vehicle.fromJson(Map<String, dynamic>.from(d as Map));
     } on DioException catch (e) {
       throw _mapWriteError(e, 'Vehicle gagal diperbarui');
+    }
+  }
+
+  /// Unggah satu gambar ke POST {baseUrl}/upload (multipart field 'file').
+  /// Mengembalikan URL relatif dari server (mis. /uploads/xxx.jpg).
+  Future<String> uploadImage(XFile file) async {
+    try {
+      final form = FormData.fromMap({
+        'file': await MultipartFile.fromFile(file.path, filename: file.name),
+      });
+      final r = await _api.dio.post(
+        ApiConstants.upload,
+        data: form,
+        // Default header ApiClient adalah application/json — override per request.
+        options: Options(contentType: 'multipart/form-data'),
+      );
+      final data = r.data;
+      String? url;
+      if (data is Map && data['data'] is Map) {
+        final d = data['data'] as Map;
+        final u = d['url'];
+        if (u is String && u.isNotEmpty) {
+          url = u;
+        } else if (d['urls'] is List && (d['urls'] as List).isNotEmpty) {
+          final first = (d['urls'] as List).first;
+          if (first is String) url = first;
+        }
+      }
+      if (url == null || url.isEmpty) {
+        throw Exception(ApiClient.msgFrom(data, 'Gambar gagal diunggah'));
+      }
+      return url;
+    } on DioException catch (e) {
+      throw _mapWriteError(e, 'Gambar gagal diunggah');
     }
   }
 

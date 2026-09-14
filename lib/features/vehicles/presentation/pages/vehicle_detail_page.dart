@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../app/theme.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../core/widgets/app_error_view.dart';
@@ -43,7 +44,9 @@ class _S extends ConsumerState<VehicleDetailPage> {
         loading: ()=> const AppLoadingView(),
         error: (e,_)=> AppErrorView(message: e.toString(), onRetry: ()=> ref.invalidate(vehicleDetailProvider(widget.id))),
         data: (v){
-          final images = v.images.isEmpty ? [''] : v.images;
+          final images = v.images.isEmpty
+              ? ['']
+              : v.images.map(ApiConstants.resolveImageUrl).toList();
           final isDesktop = Responsive.isDesktop(context);
           Widget gallery = Column(children: [
             AspectRatio(

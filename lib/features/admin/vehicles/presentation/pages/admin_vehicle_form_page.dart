@@ -1,9 +1,14 @@
+import 'dart:io';
+
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:yaw/app/theme.dart';
+import 'package:yaw/core/constants/app_constants.dart';
 import 'package:yaw/core/utils/formatters.dart';
 import 'package:yaw/features/admin/shared/admin_app_bar.dart';
 import 'package:yaw/features/vehicles/presentation/providers/vehicle_providers.dart';
@@ -35,10 +40,14 @@ class _AdminVehicleFormPageState extends ConsumerState<AdminVehicleFormPage> {
   bool _isAvailable = true;
   bool _saving = false;
 
-  // Dynamic image list — replaces the old single comma-separated field
-  final List<TextEditingController> _imageCtrls = [];
-  // Tracks which image rows have a valid URL for thumbnail preview
-  final Map<int, bool> _imageValidity = {};
+  // ── Gambar kendaraan ──
+  // `_images` = URL server (gambar lama saat edit + hasil upload sukses).
+  // `_pendingUploads` = file lokal yang baru dipilih, otomatis diunggah.
+  static const int _maxImages = 10;
+  final List<String> _images = [];
+  final List<_PendingUpload> _pendingUploads = [];
+  bool get _hasPendingUploads => _pendingUploads.isNotEmpty;
+  int get _imageCount => _images.length + _pendingUploads.length;
 
   static const _transmissions = [
     'Automatic',
@@ -74,9 +83,6 @@ class _AdminVehicleFormPageState extends ConsumerState<AdminVehicleFormPage> {
     _descCtrl.dispose();
     _engineCtrl.dispose();
     _colorCtrl.dispose();
-    for (final c in _imageCtrls) {
-      c.dispose();
-    }
     super.dispose();
   }
 
@@ -95,19 +101,11 @@ class _AdminVehicleFormPageState extends ConsumerState<AdminVehicleFormPage> {
     _fuelType = v.fuelType;
     _isAvailable = v.isAvailable;
 
-    // Populate image list
-    for (final c in _imageCtrls) {
-      c.dispose();
-    }
-    _imageCtrls.clear();
-    _imageValidity.clear();
-    if (v.images.isNotEmpty) {
-      for (var i = 0; i < v.images.length; i++) {
-        final ctrl = TextEditingController(text: v.images[i]);
-        _imageCtrls.add(ctrl);
-        _imageValidity[i] = _isValidImageUrl(v.images[i]);
-      }
-    }
+    // Muat gambar server yang sudah ada (url mentah dari backend — relatif ok)
+    _images
+      ..clear()
+      ..addAll(v.images.where((e) => e.trim().isNotEmpty));
+    _pendingUploads.clear();
     setState(() {});
   }
 
@@ -125,49 +123,95 @@ class _AdminVehicleFormPageState extends ConsumerState<AdminVehicleFormPage> {
         'fuel_type': _fuelType,
         'color': _colorCtrl.text.trim(),
         'is_available': _isAvailable,
-        'images': _imageCtrls
-            .map((c) => c.text.trim())
-            .where((e) => e.isNotEmpty)
-            .toList(),
+        'images': List<String>.from(_images),
       };
 
-  // --- Image list helpers ---
+  // --- Image helpers (galeri + kamera, upload otomatis) ---
 
-  bool _isValidImageUrl(String url) {
-    final t = url.trim();
-    return t.isNotEmpty &&
-        (t.startsWith('http://') || t.startsWith('https://')) &&
-        t.length > 10;
-  }
+  /// Kamera tersedia hanya di Android/iOS non-web (desktop/web tanpa kamera).
+  bool get _cameraSupported =>
+      !kIsWeb && (Platform.isAndroid || Platform.isIOS);
 
-  void _addImageRow() {
-    setState(() {
-      final idx = _imageCtrls.length;
-      _imageCtrls.add(TextEditingController());
-      _imageValidity[idx] = false;
-    });
-  }
-
-  void _removeImageRow(int index) {
-    setState(() {
-      _imageCtrls[index].dispose();
-      _imageCtrls.removeAt(index);
-      _imageValidity.remove(index);
-      // Re-key the validity map
-      final newValidity = <int, bool>{};
-      for (var i = 0; i < _imageCtrls.length; i++) {
-        newValidity[i] = _imageValidity[i] ?? false;
-      }
-      _imageValidity.clear();
-      _imageValidity.addAll(newValidity);
-    });
-  }
-
-  void _onImageChanged(int index, String value) {
-    final valid = _isValidImageUrl(value);
-    if (_imageValidity[index] != valid) {
-      setState(() => _imageValidity[index] = valid);
+  Future<void> _pickImages() async {
+    final remaining = _maxImages - _imageCount;
+    if (remaining <= 0) {
+      _warnImageLimit();
+      return;
     }
+    final picked = await ImagePicker()
+        .pickMultiImage(limit: remaining, imageQuality: 88);
+    if (!mounted || picked.isEmpty) return;
+    _enqueuePicked(picked);
+  }
+
+  Future<void> _takePhoto() async {
+    final remaining = _maxImages - _imageCount;
+    if (remaining <= 0) {
+      _warnImageLimit();
+      return;
+    }
+    try {
+      final shot = await ImagePicker().pickImage(
+        source: ImageSource.camera,
+        imageQuality: 88,
+        maxWidth: 1920,
+      );
+      if (!mounted || shot == null) return;
+      _enqueuePicked([shot]);
+    } on Exception {
+      // Kamera tidak tersedia, izin ditolak, atau picker gagal dibuka.
+      if (!mounted) return;
+      _showMessage('Kamera tidak tersedia / izin ditolak');
+    }
+  }
+
+  /// Tambahkan file hasil pilih ke antrian upload (hormati batas 10 gambar).
+  void _enqueuePicked(List<XFile> files) {
+    var toAdd = files;
+    final remaining = _maxImages - _imageCount;
+    if (toAdd.length > remaining) {
+      toAdd = toAdd.take(remaining).toList();
+      _warnImageLimit();
+    }
+    setState(() {
+      _pendingUploads.addAll(toAdd.map(_PendingUpload.new));
+    });
+    for (final p in List<_PendingUpload>.from(_pendingUploads)) {
+      _uploadPending(p);
+    }
+  }
+
+  void _warnImageLimit() {
+    _showMessage(
+      'Maksimal $_maxImages gambar per kendaraan',
+      bg: YawColors.warning,
+    );
+  }
+
+  Future<void> _uploadPending(_PendingUpload p) async {
+    final repo = ref.read(vehicleRepositoryProvider);
+    try {
+      final url = await repo.uploadImage(p.file);
+      if (!mounted) return;
+      setState(() {
+        _pendingUploads.remove(p);
+        _images.add(url);
+      });
+    } on Exception catch (e) {
+      if (!mounted) return;
+      setState(() => _pendingUploads.remove(p));
+      _showMessage(e.toString());
+    }
+  }
+
+  void _removeImage(int index) {
+    setState(() => _images.removeAt(index));
+  }
+
+  void _showMessage(String msg, {Color bg = YawColors.error}) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(_snack(msg, bg));
   }
 
   // --- Price formatting helpers ---
@@ -451,17 +495,13 @@ class _AdminVehicleFormPageState extends ConsumerState<AdminVehicleFormPage> {
                         title: 'Media',
                         icon: Icons.photo_library_outlined,
                         children: [
-                          if (_imageCtrls.isEmpty)
-                            _emptyImagesHint(),
-                          ...List.generate(_imageCtrls.length, (i) {
-                            return Padding(
-                              padding:
-                                  const EdgeInsets.only(bottom: 10),
-                              child: _imageRow(i),
-                            );
-                          }),
-                          const SizedBox(height: 4),
-                          _addImageBtn(),
+                          if (_images.isEmpty && _pendingUploads.isEmpty)
+                            _emptyImagesHint()
+                          else ...[
+                            _imageGrid(),
+                            const SizedBox(height: 12),
+                          ],
+                          _galleryBtn(),
                         ],
                       ),
                       const SizedBox(height: 20),
@@ -645,7 +685,7 @@ class _AdminVehicleFormPageState extends ConsumerState<AdminVehicleFormPage> {
   }
 
   // ──────────────────────────────────────────────
-  //  Image list editor
+  //  Image gallery editor
   // ──────────────────────────────────────────────
 
   Widget _emptyImagesHint() {
@@ -659,14 +699,14 @@ class _AdminVehicleFormPageState extends ConsumerState<AdminVehicleFormPage> {
           strokeAlign: BorderSide.strokeAlignInside,
         ),
       ),
-      child: Row(
+      child: const Row(
         children: [
           Icon(Icons.add_photo_alternate_outlined,
               color: YawColors.textDim, size: 32),
-          const SizedBox(width: 14),
+          SizedBox(width: 14),
           Expanded(
             child: Text(
-              'Belum ada gambar.\nTekan tombol di bawah untuk menambah URL gambar.',
+              'Belum ada gambar.\nPilih dari galeri untuk mengunggah foto kendaraan.',
               style: TextStyle(
                 color: YawColors.textDim,
                 fontSize: 13,
@@ -679,115 +719,158 @@ class _AdminVehicleFormPageState extends ConsumerState<AdminVehicleFormPage> {
     );
   }
 
-  Widget _imageRow(int index) {
-    final ctrl = _imageCtrls[index];
-    final hasPreview = _imageValidity[index] == true;
-    final url = ctrl.text.trim();
+  Widget _imageGrid() {
+    final tiles = <Widget>[
+      for (var i = 0; i < _images.length; i++)
+        _serverImageTile(i, _images[i]),
+      for (final p in _pendingUploads)
+        _pendingImageTile(p),
+    ];
+    if (tiles.isEmpty) return const SizedBox.shrink();
+    return Wrap(spacing: 8, runSpacing: 8, children: tiles);
+  }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: YawColors.surface2,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: YawColors.border),
-      ),
-      padding: const EdgeInsets.all(8),
-      child: Row(
+  Widget _serverImageTile(int index, String url) {
+    return _tileFrame(
+      child: Stack(
+        fit: StackFit.expand,
         children: [
-          // Thumbnail preview
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: YawColors.surface3,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: hasPreview
-                ? CachedNetworkImage(
-                    imageUrl: url,
-                    fit: BoxFit.cover,
-                    placeholder: (ctx, url) => const Center(
-                      child: SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: YawColors.primary,
-                        ),
-                      ),
-                    ),
-                    errorWidget: (_, _, _) => const Icon(
-                      Icons.broken_image_outlined,
-                      color: YawColors.error,
-                      size: 22,
-                    ),
-                  )
-                : const Icon(
-                    Icons.image_outlined,
-                    color: YawColors.textDim,
-                    size: 22,
-                  ),
+          CachedNetworkImage(
+            imageUrl: ApiConstants.resolveImageUrl(url),
+            fit: BoxFit.cover,
+            placeholder: (_, __) => const _TilePlaceholder(),
+            errorWidget: (_, __, ___) =>
+                const _TilePlaceholder(icon: Icons.broken_image_outlined),
           ),
-          const SizedBox(width: 10),
-          // URL input
-          Expanded(
-            child: TextFormField(
-              controller: ctrl,
-              style: const TextStyle(
-                  color: YawColors.textPrimary, fontSize: 13),
-              decoration: const InputDecoration(
-                hintText: 'https://contoh.com/gambar.jpg',
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                isDense: true,
-                border: InputBorder.none,
-              ),
-              onChanged: (v) => _onImageChanged(index, v),
-            ),
-          ),
-          // Remove button
-          InkWell(
-            onTap: () => _removeImageRow(index),
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              width: 32,
-              height: 32,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: YawColors.error.withAlpha(25),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.close,
-                  size: 16, color: YawColors.error),
-            ),
+          Positioned(
+            top: 4,
+            right: 4,
+            child: _removeTileBtn(onTap: () => _removeImage(index)),
           ),
         ],
       ),
     );
   }
 
-  Widget _addImageBtn() {
+  Widget _pendingImageTile(_PendingUpload p) {
+    return _tileFrame(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.file(
+            File(p.file.path),
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => const _TilePlaceholder(),
+          ),
+          if (p.uploading) ...[
+            Container(color: YawColors.background.withValues(alpha: .55)),
+            const Center(
+              child: SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: YawColors.primary,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _tileFrame({required Widget child}) {
+    return Container(
+      width: 96,
+      height: 96,
+      decoration: BoxDecoration(
+        color: YawColors.surface2,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: YawColors.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: child,
+    );
+  }
+
+  Widget _removeTileBtn({required VoidCallback onTap}) {
     return InkWell(
-      onTap: _addImageRow,
-      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        width: 26,
+        height: 26,
+        decoration: BoxDecoration(
+          color: YawColors.error.withValues(alpha: .92),
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white.withValues(alpha: .35)),
+        ),
+        child: const Icon(Icons.close, size: 14, color: Colors.white),
+      ),
+    );
+  }
+
+  Widget _galleryBtn() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _mediaPickBtn(
+                icon: Icons.photo_library_outlined,
+                label: 'Galeri',
+                onTap: _pickImages,
+              ),
+            ),
+            if (_cameraSupported) ...[
+              const SizedBox(width: 10),
+              Expanded(
+                child: _mediaPickBtn(
+                  icon: Icons.photo_camera_outlined,
+                  label: 'Kamera',
+                  onTap: _takePhoto,
+                ),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          '$_imageCount/$_maxImages gambar • diunggah otomatis saat dipilih',
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 11, color: YawColors.textDim),
+        ),
+      ],
+    );
+  }
+
+  Widget _mediaPickBtn({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
           color: YawColors.primary.withAlpha(15),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: YawColors.primary.withAlpha(60),
           ),
         ),
-        child: const Row(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.add_rounded,
-                size: 18, color: YawColors.primary),
-            SizedBox(width: 8),
+            Icon(icon, size: 18, color: YawColors.primary),
+            const SizedBox(width: 8),
             Text(
-              'Tambah gambar',
-              style: TextStyle(
+              label,
+              style: const TextStyle(
                 color: YawColors.primary,
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -819,7 +902,7 @@ class _AdminVehicleFormPageState extends ConsumerState<AdminVehicleFormPage> {
             width: double.infinity,
             height: 50,
             child: ElevatedButton(
-              onPressed: _saving ? null : _submit,
+              onPressed: _saving || _hasPendingUploads ? null : _submit,
               style: ElevatedButton.styleFrom(
                 backgroundColor: YawColors.primary,
                 disabledBackgroundColor: YawColors.surface3,
@@ -861,6 +944,11 @@ class _AdminVehicleFormPageState extends ConsumerState<AdminVehicleFormPage> {
       (v == null || v.trim().isEmpty) ? 'Wajib diisi' : null;
 
   Future<void> _submit() async {
+    // Jangan izinkan save jika masih ada unggahan berlangsung.
+    if (_pendingUploads.isNotEmpty) {
+      _showMessage('Tunggu unggahan selesai', bg: YawColors.warning);
+      return;
+    }
     final f = _formKey.currentState;
     if (f == null || !f.validate()) return;
     final repo = ref.read(vehicleRepositoryProvider);
@@ -921,4 +1009,24 @@ class _PricePrefix extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Tile placeholder — ditampilkan saat gambar gagal dimuat atau belum ada.
+class _TilePlaceholder extends StatelessWidget {
+  const _TilePlaceholder({this.icon = Icons.image_outlined});
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        color: YawColors.surface2,
+        child: Icon(icon, color: YawColors.textDim, size: 24),
+      );
+}
+
+/// Upload lokal yang sedang menunggu/diunggah — otomatis dihapus setelah
+/// sukses (URL server masuk ke `_images`) atau gagal.
+class _PendingUpload {
+  _PendingUpload(this.file);
+  final XFile file;
+  bool uploading = true;
 }

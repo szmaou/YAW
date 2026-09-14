@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../../app/theme.dart';
+import '../../core/constants/app_constants.dart';
 import '../../core/utils/formatters.dart';
 import '../models/vehicle.dart';
 
@@ -31,7 +32,7 @@ class VehicleCard extends StatelessWidget {
               Positioned.fill(
                 child: vehicle.primaryImage.isNotEmpty
                     ? CachedNetworkImage(
-                        imageUrl: vehicle.primaryImage,
+                        imageUrl: ApiConstants.resolveImageUrl(vehicle.primaryImage),
                         fit: BoxFit.cover,
                         placeholder: (_,__) => Container(color: YawColors.surface2),
                         errorWidget: (_,__,___) => _placeholder(),

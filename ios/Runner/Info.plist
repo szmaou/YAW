@@ -4,6 +4,12 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Butuh akses kamera untuk memotret kendaraan.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Butuh akses galeri untuk memilih foto kendaraan.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Butuh akses galeri untuk memilih foto kendaraan.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

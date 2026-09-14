@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:yaw/app/theme.dart';
+import 'package:yaw/core/constants/app_constants.dart';
 import 'package:yaw/core/widgets/app_error_view.dart';
 import 'package:yaw/features/admin/shared/admin_app_bar.dart';
 import 'package:yaw/features/vehicles/data/vehicle_repository.dart';
@@ -101,7 +102,7 @@ class _AdminVehiclesPageState extends ConsumerState<AdminVehiclesPage> {
                   decoration: BoxDecoration(color: YawColors.surface2, borderRadius: BorderRadius.circular(8), border: Border.all(color: YawColors.border)),
                   clipBehavior: Clip.antiAlias,
                   child: v.primaryImage.isNotEmpty
-                      ? CachedNetworkImage(imageUrl: v.primaryImage, fit: BoxFit.cover,
+                      ? CachedNetworkImage(imageUrl: ApiConstants.resolveImageUrl(v.primaryImage), fit: BoxFit.cover,
                           errorWidget: (_, __, ___) => const Icon(Icons.directions_car_rounded, size: 22, color: YawColors.textDim))
                       : const Icon(Icons.directions_car_rounded, size: 22, color: YawColors.textDim),
                 ),

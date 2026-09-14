@@ -24,6 +24,25 @@ class ApiConstants {
   // Vehicles & categories
   static const String vehicles = '/vehicles';
   static const String categories = '/categories';
+  static const String upload = '/upload';
+
+  // Origin server (tanpa path /api/v1) — dipakai untuk menampilkan URL relatif.
+  static String get serverOrigin {
+    final apiIdx = baseUrl.indexOf('/api');
+    return apiIdx > 0 ? baseUrl.substring(0, apiIdx) : baseUrl;
+  }
+
+  /// Ubah path relatif backend (/uploads/...) jadi URL absolut agar
+  /// CachedNetworkImage / Image.network bisa menampilkannya.
+  /// Jika sudah HTTP, dikembalikan apa adanya; selain itu (empty/path/query)
+  /// dikembalikan apa adanya.
+  static String resolveImageUrl(String u) {
+    final t = u.trim();
+    if (t.isEmpty) return '';
+    if (t.startsWith('http://') || t.startsWith('https://')) return t;
+    if (t.startsWith('/')) return '$serverOrigin$t';
+    return t;
+  }
 
   // Favorites / Orders / Users / Admin
   static const String favorites = '/favorites';
