@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../app/theme.dart';
+import '../../../../core/utils/responsive.dart';
 
 /// Data developer diambil dari docs/profiles/*.md.
 class _Developer {
@@ -61,6 +63,8 @@ class ProfilesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Tablet + desktop memakai grid; mobile tetap list satu kolom.
+    final isGrid = !Responsive.isMobile(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('TIM PENGEMBANG'),
@@ -69,21 +73,43 @@ class ProfilesPage extends StatelessWidget {
           child: Container(height: 1, color: YawColors.border),
         ),
       ),
+      // Batas lebar supaya di layar ultrawide gridnya tidak kebanyakan kolom.
       body: Center(
         child: ConstrainedBox(
-          // Di layar lebar kartu tetap rapi: selebar maks 680px, di tengah.
-          constraints: const BoxConstraints(maxWidth: 680),
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-            children: [
-              const _IntroHeader(),
-              const SizedBox(height: 16),
-              ..._developers.map((d) => Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: _DeveloperCard(dev: d),
-                  )),
-            ],
-          ),
+          constraints: const BoxConstraints(maxWidth: 1400),
+          child: CustomScrollView(slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+              sliver: const SliverToBoxAdapter(child: _IntroHeader()),
+            ),
+            if (isGrid)
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                sliver: SliverGrid(
+                  // Basis ukuran kartu ~360px; jumlah kolom menyesuaikan lebar.
+                  // Tinggi sel tetap (extent) supaya kartu seragam & tidak ada yang terpotong.
+                  gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 360,
+                    mainAxisExtent: Responsive.isDesktop(context) ? 620 : 580,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (_, i) => _DeveloperCard(dev: _developers[i], compact: true),
+                    childCount: _developers.length,
+                  ),
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                sliver: SliverList.separated(
+                  itemCount: _developers.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 16),
+                  itemBuilder: (_, i) => _DeveloperCard(dev: _developers[i]),
+                ),
+              ),
+          ]),
         ),
       ),
     );
@@ -128,8 +154,12 @@ class _IntroHeader extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _DeveloperCard extends StatelessWidget {
-  const _DeveloperCard({required this.dev});
+  const _DeveloperCard({required this.dev, this.compact = false});
   final _Developer dev;
+
+  /// Mode grid: deskripsi dibatasi 8 baris (dipotong dengan '…') supaya
+  /// tinggi kartu seragam dan tidak meluber dari sel grid.
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -162,6 +192,8 @@ class _DeveloperCard extends StatelessWidget {
                 Text(
                   dev.desc,
                   style: const TextStyle(fontSize: 13, color: YawColors.textMuted, height: 1.55),
+                  maxLines: compact ? 8 : null,
+                  overflow: compact ? TextOverflow.ellipsis : null,
                 ),
                 if (dev.link != null) ...[
                   const SizedBox(height: 14),
@@ -223,15 +255,25 @@ class _Photo extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Link chip — copies URL to clipboard (no url_launcher dependency)
+// Link chip — buka di browser eksternal via url_launcher;
+// kalau gagal (mis. xdg-open tidak ada di Linux) fallback ke salin link.
 // ---------------------------------------------------------------------------
 
 class _LinkChip extends StatelessWidget {
   const _LinkChip({required this.link});
   final String link;
 
-  void _copy(BuildContext context) {
+  Future<void> _open(BuildContext context) async {
+    var opened = false;
+    try {
+      opened = await launchUrl(Uri.parse(link), mode: LaunchMode.externalApplication);
+    } catch (_) {
+      opened = false;
+    }
+    if (opened) return;
+    // Fallback: salin link ke clipboard supaya tetap bisa dibuka manual.
     Clipboard.setData(ClipboardData(text: link));
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(const SnackBar(content: Text('Link disalin — buka di browser kamu.')));
@@ -243,7 +285,7 @@ class _LinkChip extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         InkWell(
-          onTap: () => _copy(context),
+          onTap: () => _open(context),
           borderRadius: BorderRadius.circular(20),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
