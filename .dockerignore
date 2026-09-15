@@ -1,6 +1,8 @@
-# Root build context dipakai backend/Dockerfile (lihat docker-compose.prod.yml).
-# Hanya backend/{package,src,tsconfig,Dockerfile} + database/ yang di-COPY,
-# jadi kecualikan sisanya agar transfer context tetap kecil.
+# Root build context dipakai backend/Dockerfile (lihat docker-compose.prod.yml)
+# dan docker/Dockerfile.web. Hanya yang di-COPY yang wajib ADA:
+# backend/{package,src,tsconfig,Dockerfile} + database/ (backend),
+# pubspec.yaml + lib/ + web/ + assets/ + docker/nginx-web.conf (web).
+# Kecualikan sisanya agar transfer context tetap kecil.
 .git
 .dart_tool
 .flutter-plugins-dependencies
@@ -12,8 +14,6 @@ ios
 linux
 macos
 windows
-web
-assets
 test
 backend/node_modules
 backend/dist
