@@ -119,10 +119,11 @@ verify: backend-typecheck app-analyze ## Run backend typecheck + dart analyze (b
 deploy-build: ## Build image prod (cek API_BASE_URL di .env.prod)
 	@if [ -f .env.prod ]; then set -a; . ./.env.prod; set +a; fi; \
 	if [ -z "$${API_BASE_URL:-}" ]; then echo "API_BASE_URL kosong — isi .env.prod (cp .env.prod.example .env.prod)"; exit 1; fi; \
-	docker compose -f docker-compose.prod.yml --env-file .env.prod build
+	docker compose -f docker-compose.prod.yml --env-file .env.prod build --pull
 
 deploy-up: ## Up stack prod (-d + ps)
-	docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+	docker compose -f docker-compose.prod.yml --env-file .env.prod build --pull
+	docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
 	docker compose -f docker-compose.prod.yml --env-file .env.prod ps
 
 deploy-down: ## Down stack prod (volume dipertahankan)
@@ -132,11 +133,12 @@ deploy-logs: ## Follow log backend + web prod
 	docker compose -f docker-compose.prod.yml --env-file .env.prod logs -f yaw-backend yaw-web
 
 deploy-verify: ## Curl web->api prod + petunjuk login seed
-	@curl -s http://localhost/api/health | head -c 500; echo
+	@if [ -f .env.prod ]; then set -a; . ./.env.prod; set +a; fi; \
+	curl -s http://localhost:$${WEB_PORT:-80}/api/health | head -c 500; echo
 	@echo "Login seed: admin@yaw.id / admin123 (POST /api/v1/auth/login, ganti setelah masuk)."
 
 deploy-web-rebuild: ## Rebuild yaw-web saja (mis. ganti API_BASE_URL)
-	docker compose -f docker-compose.prod.yml --env-file .env.prod build yaw-web
+	docker compose -f docker-compose.prod.yml --env-file .env.prod build --pull yaw-web
 	docker compose -f docker-compose.prod.yml --env-file .env.prod up -d yaw-web
 	docker compose -f docker-compose.prod.yml --env-file .env.prod ps
 

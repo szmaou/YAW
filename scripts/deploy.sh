@@ -63,7 +63,7 @@ case "$CMD" in
       echo "[deploy] GAGAL — backend tidak sehat. Lihat: ./scripts/deploy.sh logs"
       exit 1
     fi
-    echo "[deploy] Dari host, buka http://localhost/ (web) — API di http://localhost/api/health."
+    echo "[deploy] Dari host, buka http://localhost:${WEB_PORT:-80}/ (web) — API di http://localhost:${WEB_PORT:-80}/api/health."
     echo "[deploy] Login seed bawaan: admin@yaw.id / admin123 (ganti setelah masuk)."
     ;;
   web-rebuild)

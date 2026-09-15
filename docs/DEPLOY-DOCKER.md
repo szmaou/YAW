@@ -62,6 +62,22 @@ curl -s -X POST http://localhost/api/v1/auth/login \
   -d '{"email":"admin@yaw.id","password":"admin123"}'
 ```
 
+(ganti `localhost` dengan `localhost:$WEB_PORT` bila memakai `WEB_PORT` di bawah)
+
+## 3b. Port 80 sudah dipakai?
+
+`yaw-web` di-bind ke host port 80 secara default dan gagal start dengan
+`failed to bind host port 0.0.0.0:80 ... address already in use` bila port
+tersebut dipakai aplikasi lain. Solusi — set di `.env.prod`:
+
+```bash
+WEB_PORT=8080
+./scripts/deploy.sh up   # web di http://localhost:8080/
+```
+
+Hanya binding host yang berubah; nginx tetap listen 80 di dalam container,
+jadi proxy `/api/` dan `/uploads/` tidak terpengaruh.
+
 ## 4. Nginx / HTTPS
 
 Container `yaw-web` hanya listen port 80. TLS di-terminasi di host:
@@ -72,6 +88,7 @@ sudo certbot --nginx -d <domain>
 ```
 
 Certbot di host me-reverse-proxy ke `http://localhost:80`
+(atau `http://localhost:$WEB_PORT` bila memakai `WEB_PORT`)
 (web sudah mem-proxy `/api/` dan `/uploads/` ke `yaw-backend:3002`
 dengan header `X-Forwarded-*`, jadi tidak perlu config proxy tambahan
 untuk API). Alternatif: pasang reverse-proxy (nginx/traefik) apa pun
