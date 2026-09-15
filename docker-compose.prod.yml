@@ -23,7 +23,10 @@ services:
 
   yaw-backend:
     build:
-      context: ./backend
+      # Context repo root (bukan ./backend) agar database/migrations ikut
+      # terbake ke image — initDb menjalankannya saat container start.
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: yaw-prod-backend
     restart: unless-stopped
     environment:

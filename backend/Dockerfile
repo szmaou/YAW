@@ -1,19 +1,22 @@
 # YAW backend — production image (multi-stage, no .env dibake; env via compose)
+# Build context = repo root (lihat docker-compose.prod.yml) agar folder
+# database/migrations ikut terbake — initDb membutuhkannya saat start.
 FROM node:22-alpine AS builder
 WORKDIR /app
-COPY package.json package-lock.json ./
+COPY backend/package.json backend/package-lock.json ./
 RUN npm ci
-COPY tsconfig.json ./
-COPY src ./src
+COPY backend/tsconfig.json ./
+COPY backend/src ./src
 RUN npm run build
 
 FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production \
     UPLOAD_PATH=/app/uploads
-COPY package.json package-lock.json ./
+COPY backend/package.json backend/package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=builder /app/dist ./dist
+COPY database ./database
 RUN mkdir -p /app/uploads
 VOLUME /app/uploads
 EXPOSE 3002

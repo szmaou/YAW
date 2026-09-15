@@ -1,0 +1,28 @@
+# Root build context dipakai backend/Dockerfile (lihat docker-compose.prod.yml).
+# Hanya backend/{package,src,tsconfig,Dockerfile} + database/ yang di-COPY,
+# jadi kecualikan sisanya agar transfer context tetap kecil.
+.git
+.dart_tool
+.flutter-plugins-dependencies
+.metadata
+build
+coverage
+android
+ios
+linux
+macos
+windows
+web
+assets
+test
+backend/node_modules
+backend/dist
+backend/uploads
+backend/.env
+node_modules
+uploads
+.env
+.env.prod
+.env.local
+.opencode
+*.log
