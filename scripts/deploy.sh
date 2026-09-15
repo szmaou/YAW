@@ -35,13 +35,16 @@ CMD="${1:-up}"
 case "$CMD" in
   up)
     echo "[deploy] Build + up production stack..."
-    $COMPOSE up -d --build
+    # --pull: base image flutter:stable di-cache berbulan-bulan bisa kedaluwarsa
+    # (Dart < 3.12) sehingga `flutter pub get` gagal version-solving (exit 1).
+    $COMPOSE build --pull
+    $COMPOSE up -d
     $COMPOSE ps
     echo "[deploy] Selesai. Cek: ./scripts/deploy.sh verify"
     ;;
   build)
     echo "[deploy] Build image production (tanpa up)..."
-    $COMPOSE build
+    $COMPOSE build --pull
     echo "[deploy] Build selesai."
     ;;
   down)
@@ -65,7 +68,7 @@ case "$CMD" in
     ;;
   web-rebuild)
     echo "[deploy] Rebuild + restart yaw-web saja..."
-    $COMPOSE build yaw-web
+    $COMPOSE build --pull yaw-web
     $COMPOSE up -d yaw-web
     $COMPOSE ps
     ;;

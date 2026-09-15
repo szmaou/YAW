@@ -63,6 +63,7 @@ Backend has no test suite and `npm run lint` is broken (no eslint dep/config) �
 - **`db.ts`**: forces `localhost → 127.0.0.1` to avoid unix socket; `pool.on('error')` is `(pool as any).on('error')` because mariadb types only declare `release`.
 - **`backend/src/config/initDb.ts` fallback**: tries `yaw_user` first, then `root/root123`, `root/''`, `root/$MARIADB_ROOT_PASSWORD` via `mariadb.createConnection` (no DB). On Arch, `root` uses `unix_socket` so those fallbacks fail — use `sudo mariadb` or Docker instead.
 - **`errorHandler.ts` messages** still reference `3310` — actually `3306` after the fix.
+- **Web deploy build**: `docker/Dockerfile.web` must `COPY pubspec.lock` (deterministic resolve) and keep `pub get`/`build web` in separate RUNs so BuildKit shows which step failed. `deploy.sh` builds with `--pull` because a months-old cached `flutter:stable` base (Dart < 3.12) fails `pub get` version-solving against `sdk: ^3.12.0` with bare exit 1 — if it recurs, rerun with `--progress=plain` to see the real log.
 - **Rebuild caches**: project was moved from `PB/YAW` → `YAW`; absolute CMake/dart-tool caches cause `CMakeCache.txt` mismatch. After any path move: `rm -rf build/ .dart_tool/ && flutter clean && flutter pub get`. `flutter run` router changes need full restart (`R`), not hot reload.
 
 ## Conventions

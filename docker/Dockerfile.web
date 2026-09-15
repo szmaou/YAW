@@ -10,12 +10,17 @@ ARG API_BASE_URL
 ARG BASE_HREF=/
 RUN test -n "$API_BASE_URL" || (echo "ARG API_BASE_URL kosong — isi API_BASE_URL di .env.prod" >&2; exit 1)
 
-COPY pubspec.yaml ./
+COPY pubspec.yaml pubspec.lock ./
 COPY lib ./lib
 COPY web ./web
 COPY assets ./assets
-RUN flutter pub get && \
-    if [ "$BASE_HREF" = "/" ]; then \
+# Lapisan terpisah agar log BuildKit jelas langkah mana yang gagal,
+# dan agar pubspec.lock dipakai (resolusi versi deterministik —
+# tanpa lock, `pub get` resolve ulang dan bisa gagal di base image lama).
+# `flutter --version` dicetak dulu agar mismatch Dart SDK terlihat di log.
+RUN flutter --version
+RUN flutter pub get
+RUN if [ "$BASE_HREF" = "/" ]; then \
       flutter build web --release --dart-define=API_BASE_URL=$API_BASE_URL; \
     else \
       flutter build web --release --dart-define=API_BASE_URL=$API_BASE_URL --base-href "$BASE_HREF"; \
