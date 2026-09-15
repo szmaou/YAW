@@ -28,12 +28,10 @@ flutter pub get && flutter run -d linux   # or -d chrome / android
 `.env` is gitignored (`backend/.env`). `DB_PORT=3306` is canonical; `backend/DB_SETUP.md` is a stale diagnostic snapshot (mentions `3307`, `/home/san/...`, claims no compose file) — ignore it. `README.md` still says backend port `3000` — actually `3002`. `tsx watch` does **not** watch `.env` — restart manually after env changes.
 
 ## Makefile — Canonical Shortcuts
-Run `make help` for the full list. Prefer `make <target>` over raw bash — the Makefile is the source of truth for ports, paths, and order.
-- `make setup` → `db-up` + `backend-install` + `app-install` (first run)
-- `make db-up / db-down / db-verify / db-reset / db-logs` → MariaDB lifecycle (`docker compose` at repo root, `3306`)
-- `make backend-dev / backend-build / backend-start / backend-seed / backend-typecheck / backend-health` → backend (`backend/` on `3002`)
-- `make app-run (= app-run-linux) / app-run-chrome / app-analyze / app-analyze-focused / app-test / fix-cmake` → Flutter
+Run `make help` for the full list. Makefile is slimmed to deploy (docker) + testing only — dev commands run as raw bash (`docker compose up -d`, `npm run dev`, `flutter run`).
 - `make verify` → `backend-typecheck` + `app-analyze` (both must be 0 errors)
+- `make backend-typecheck / app-analyze / app-test / backend-health` → testing/health primitives
+- `make deploy-build / deploy-up / deploy-down / deploy-logs / deploy-verify / deploy-web-rebuild` → prod via `docker-compose.prod.yml` + `.env.prod` (see `docs/DEPLOY-DOCKER.md`)
 
 ## Verification (Exact Commands)
 ```bash
