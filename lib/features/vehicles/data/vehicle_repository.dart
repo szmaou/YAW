@@ -66,10 +66,14 @@ class VehicleRepository {
 
   /// Unggah satu gambar ke POST {baseUrl}/upload (multipart field 'file').
   /// Mengembalikan URL relatif dari server (mis. /uploads/xxx.jpg).
+  /// Pakai bytes (bukan path) karena di web XFile.path adalah blob-URL yang
+  /// tidak bisa dibaca MultipartFile.fromFile — itu melempar UnsupportedError
+  /// (sebuah Error, bukan Exception) sehingga spinner upload macet selamanya.
   Future<String> uploadImage(XFile file) async {
     try {
+      final bytes = await file.readAsBytes();
       final form = FormData.fromMap({
-        'file': await MultipartFile.fromFile(file.path, filename: file.name),
+        'file': MultipartFile.fromBytes(bytes, filename: file.name),
       });
       final r = await _api.dio.post(
         ApiConstants.upload,

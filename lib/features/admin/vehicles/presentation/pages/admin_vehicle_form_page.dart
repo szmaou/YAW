@@ -197,7 +197,10 @@ class _AdminVehicleFormPageState extends ConsumerState<AdminVehicleFormPage> {
         _pendingUploads.remove(p);
         _images.add(url);
       });
-    } on Exception catch (e) {
+    } catch (e) {
+      // catch (e) — bukan on Exception — agar platform Error
+      // (mis. UnsupportedError di web) juga jadi snackbar,
+      // bukan spinner yang macet selamanya.
       if (!mounted) return;
       setState(() => _pendingUploads.remove(p));
       _showMessage(e.toString());
@@ -753,15 +756,24 @@ class _AdminVehicleFormPageState extends ConsumerState<AdminVehicleFormPage> {
   }
 
   Widget _pendingImageTile(_PendingUpload p) {
+    // Web: XFile.path adalah blob-URL → tampilkan via Image.network.
+    // Native: path file lokal → Image.file. (dart:io File tidak jalan di web.)
+    final preview = kIsWeb
+        ? Image.network(
+            p.file.path,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => const _TilePlaceholder(),
+          )
+        : Image.file(
+            File(p.file.path),
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => const _TilePlaceholder(),
+          );
     return _tileFrame(
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Image.file(
-            File(p.file.path),
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => const _TilePlaceholder(),
-          ),
+          preview,
           if (p.uploading) ...[
             Container(color: YawColors.background.withValues(alpha: .55)),
             const Center(
