@@ -3,7 +3,7 @@
 YAW = Flutter (Riverpod + GoRouter) + Node.js/Express + MariaDB automotive marketplace. Two projects in one repo: `lib/` (Flutter) and `backend/` (TypeScript). No monorepo tool, no `opencode.json`, no `CLAUDE.md`, no CI workflows.
 
 ## Stack & Layout
-- **Flutter** (Dart `^3.12.0`, Flutter ≥3.44 for go_router 18) — `go_router ^18.0.1`, `flutter_riverpod ^3.4.3` (+ `riverpod_annotation ^4.0.7` / `riverpod_generator ^4.0.9` / `riverpod_lint ^3.1.9`), `dio ^5.7.0`, `intl 0.20.2`, `flutter_secure_storage ^11.0.0`, `google_fonts ^8.2.1`, `cached_network_image ^4.0.0`, `shimmer ^4.0.0`, `freezed ^4.0.1`. No `custom_lint` (removed — conflicts with riverpod_lint 3.x). Assets: `assets/images/` `assets/icons/`.
+- **Flutter** (Dart `^3.12.0`) — `go_router ^18.0.1`, `flutter_riverpod ^3.4.3` (+ `riverpod_annotation ^4.0.7` / `riverpod_generator ^4.0.9` / `riverpod_lint ^3.1.9`), `dio ^5.7.0`, `intl 0.20.2`, `flutter_secure_storage ^11.0.0`, `google_fonts ^8.2.1`, `cached_network_image ^4.0.0`, `shimmer ^4.0.0`, `freezed ^4.0.1`. No `custom_lint` (removed — conflicts with riverpod_lint 3.x). Assets: `assets/images/` `assets/icons/`.
 - **Backend** — `backend/src/app.ts` is entrypoint (`tsx watch src/app.ts` dev, `tsc` build → `node dist/app.js`). Strict TS, target `ES2022`/`commonjs`, `outDir dist`. Express 5, helmet 8, dotenv 17, bcryptjs 3 (types bundled — no `@types/bcryptjs`), multer 2 (needs `@types/multer ^2.2.0`), zod 4, TS 7, `@types/node ^26`, `@types/express ^5`.
 - **DB** — MariaDB 11.4, 8 tables (`users`, `vehicle_categories`, `vehicles`, `vehicle_images`, `favorites`, `orders`, `order_items`, `payments`) in `database/migrations/001_init.sql`. `users.id` and all PKs are `BIGINT UNSIGNED`.
 
@@ -25,7 +25,7 @@ npm run build && npm start  # production: tsc -> node dist/app.js
 flutter pub get && flutter run -d linux   # or -d chrome / android
 # demo login even without DB: admin@yaw.id/admin123; any email + password>=6 -> mock user
 ```
-`.env` is gitignored (`backend/.env`). `DB_PORT=3306` is canonical; `DB_SETUP.md` still mentions `3307` — ignore it. `tsx watch` does **not** watch `.env` — restart manually after env changes.
+`.env` is gitignored (`backend/.env`). `DB_PORT=3306` is canonical; `backend/DB_SETUP.md` is a stale diagnostic snapshot (mentions `3307`, `/home/san/...`, claims no compose file) — ignore it. `README.md` still says backend port `3000` — actually `3002`. `tsx watch` does **not** watch `.env` — restart manually after env changes.
 
 ## Makefile — Canonical Shortcuts
 Run `make help` for the full list. Prefer `make <target>` over raw bash — the Makefile is the source of truth for ports, paths, and order.
@@ -41,17 +41,12 @@ make verify                               # backend tsc + dart analyze — both 
 make backend-typecheck                    # same as: cd backend && ./node_modules/.bin/tsc --noEmit
 make app-analyze                          # same as: /opt/flutter/bin/cache/dart-sdk/bin/dart analyze (direct SDK; `flutter analyze` masks output)
 make app-analyze-focused                  # focused: lib/app/router.dart lib/main.dart
-make app-test                             # flutter test (single widget_test)
+make app-test                             # flutter test (single widget_test — only test in repo)
 make backend-health                       # curl /api/health + POST /api/v1/auth/login
-# Raw equivalents if not using make:
-./node_modules/.bin/tsc --noEmit          # from backend/
-# Frontend — ~70 infos is clean (unnecessary_underscores, deprecated value, use_build_context). 0 errors = pass
-/opt/flutter/bin/cache/dart-sdk/bin/dart analyze   # use direct SDK path; `flutter analyze` wrapper masks output with git status
-/opt/flutter/bin/cache/dart-sdk/bin/dart analyze lib/app/router.dart lib/main.dart   # focused check
-flutter test   # single widget_test only
 curl -s http://localhost:3002/api/health                          # 200 {"success":true}
 curl -s -X POST http://localhost:3002/api/v1/auth/login -H 'Content-Type: application/json' -d '{"email":"admin@yaw.id","password":"admin123"}'  # 200 + JWT; GET on same path is 404 by design
 ```
+Backend has no test suite and `npm run lint` is broken (no eslint dep/config) — do not run it. `analysis_options.yaml` excludes `build/android/ios/web/windows/macos/linux`, so analyzer covers `lib/` + `test/` only.
 
 ## Architecture — Not Obvious
 - **Router** `lib/app/router.dart`: `Provider<GoRouter>` with `ValueNotifier<int>(0)` as `refreshListenable` + `ref.listen(authProvider, (_,__)=>refresh.value++)` + `ref.read(authProvider)` in `redirect`. Riverpod 3 removed `Ref` type params — `ref.listen<AuthState>` no longer compiles. Do **not** hold `Ref` in a `ChangeNotifier` and do **not** `watch(authProvider)` inside the provider — that recreates `GoRouter` and triggers `Navigator !keyReservation.contains(key)` assertion.
@@ -71,7 +66,8 @@ curl -s -X POST http://localhost:3002/api/v1/auth/login -H 'Content-Type: applic
 - **Rebuild caches**: project was moved from `PB/YAW` → `YAW`; absolute CMake/dart-tool caches cause `CMakeCache.txt` mismatch. After any path move: `rm -rf build/ .dart_tool/ && flutter clean && flutter pub get`. `flutter run` router changes need full restart (`R`), not hot reload.
 
 ## Conventions
-- Theme: `lib/app/theme.dart` dark `YawColors` (`#0B0F14` bg, `#00E5FF` primary). Use `InkWell + Container` (not `ListTile`) with `YawColors.surface/surface2/border` — `ListTile` inside colored `Container` hides ink splash.
-- API base: `http://localhost:3002/api/v1` (`10.0.2.2:3002` on Android emulator) in `lib/core/constants/app_constants.dart`.
-- `.gitignore` excludes `.env`, `backend/.env`, `.opencode/`, `node_modules/`, `uploads/`. Commit `backend/.env.example` instead.
-- `docker-compose.yml` at repo root is the single source of truth for local MariaDB.
+- Theme: `lib/app/theme.dart` dark `YawColors` (`#0B0F14` bg, `#00E5FF` primary). Prefer `YawColors.surface/surface2/border` for cards/containers.
+- API base: `http://localhost:3002/api/v1` in `lib/core/constants/app_constants.dart`, overridable via `--dart-define=API_BASE_URL=...` (web release requires it; Android emulator uses `http://10.0.2.2:3002/api/v1`).
+- Uploads served at `/uploads` (`UPLOAD_PATH=./uploads` dev, `/app/uploads` volume `yaw-uploads` in prod).
+- `.gitignore` excludes `.env`, `backend/.env`, `.opencode/`, `node_modules/`, `uploads/`. Commit `backend/.env.example` instead. Note: `.env.prod` is NOT yet in `.gitignore` — do not commit it.
+- `docker-compose.yml` at repo root is the single source of truth for local MariaDB. Prod is Docker-only: `docker-compose.prod.yml` + `.env.prod` (`cp .env.prod.example .env.prod`, `API_BASE_URL` required) via `make deploy-build/deploy-up/deploy-verify` or `scripts/deploy.sh`; DB has no published ports in prod.
