@@ -1,57 +1,47 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../constants/app_constants.dart';
 
+/// Token dkk disimpan di secure storage bila tersedia, dengan fallback ke
+/// SharedPreferences (localStorage di web) bila secure storage melempar.
+/// Fallback ini WAJIB ada: FlutterSecureStorageWeb hanya jalan di secure
+/// context (https:// atau localhost), sehingga web via http://IP selalu
+/// melempar UnsupportedError — tanpa fallback, login gagal tepat setelah
+/// server mengembalikan 200 + token (write token melempar duluan).
 class SecureStorage {
   SecureStorage({FlutterSecureStorage? s}) : _secure = s ?? const FlutterSecureStorage();
 
   final FlutterSecureStorage _secure;
 
-  static const _secureOnlyKeys = {StorageKeys.token, StorageKeys.refreshToken};
-
   Future<String?> read(String key) async {
-    if (_secureOnlyKeys.contains(key)) {
-      try {
-        return await _secure.read(key: key);
-      } catch (_) {
-        return null; // secure read failed → null (no fallback)
-      }
-    }
-    // non-sensitive: secure first, SharedPreferences fallback
     try {
-      return await _secure.read(key: key);
-    } catch (_) {
+      final v = await _secure.read(key: key);
+      if (v != null) return v;
+    } catch (_) {}
+    try {
       final sp = await SharedPreferences.getInstance();
       return sp.getString(key);
+    } catch (_) {
+      return null;
     }
   }
 
   Future<void> write(String key, String value) async {
-    if (_secureOnlyKeys.contains(key)) {
-      await _secure.write(key: key, value: value); // rethrow on failure
-      return;
-    }
-    // non-sensitive: secure first, SharedPreferences fallback
     try {
       await _secure.write(key: key, value: value);
-    } catch (_) {
-      final sp = await SharedPreferences.getInstance();
-      await sp.setString(key, value);
-    }
+      return;
+    } catch (_) {}
+    final sp = await SharedPreferences.getInstance();
+    await sp.setString(key, value);
   }
 
   Future<void> delete(String key) async {
-    if (_secureOnlyKeys.contains(key)) {
-      await _secure.delete(key: key); // rethrow on failure
-      return;
-    }
-    // non-sensitive: secure first, SharedPreferences fallback
     try {
       await _secure.delete(key: key);
-    } catch (_) {
+    } catch (_) {}
+    try {
       final sp = await SharedPreferences.getInstance();
       await sp.remove(key);
-    }
+    } catch (_) {}
   }
 
   Future<void> clear() async {
