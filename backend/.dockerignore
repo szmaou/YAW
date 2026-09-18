@@ -1,7 +1,0 @@
-node_modules
-dist
-uploads
-.env
-.env.prod
-npm-debug.log
-*.log

@@ -80,8 +80,8 @@ export async function initDb(): Promise<void> {
     console.error('[initDb] skip migrations - pool unreachable', e?.message || e);
     console.error(
       '[initDb] HINT: is MariaDB running and reachable on the configured port? ' +
-      'Start it (e.g. `sudo systemctl start mariadb`) or bring up Docker ' +
-      '(`docker compose up -d`) and ensure the port matches DB_PORT in .env.',
+      'Start it (e.g. `sudo systemctl start mariadb`) ' +
+      'and ensure the port matches DB_PORT in .env.',
     );
     return; // skip migrations + seed; API still starts
   }
@@ -142,8 +142,8 @@ export async function initDb(): Promise<void> {
      );
      console.error(
        '[initDb] HINT: is MariaDB running and reachable on the configured port? ' +
-       'Start it (e.g. `sudo systemctl start mariadb`) or bring up Docker ' +
-       '(`docker compose up -d`) and ensure the port matches DB_PORT in .env.',
+       'Start it (e.g. `sudo systemctl start mariadb`) ' +
+       'and ensure the port matches DB_PORT in .env.',
      );
      throw e;
    }

@@ -1,0 +1,19 @@
+[Unit]
+Description=yaw-backend
+After=network.target mariadb.service
+Wants=mariadb.service
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/yaw/backend
+ExecStart=/usr/bin/node /opt/yaw/backend/dist/app.js
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+EnvironmentFile=/opt/yaw/backend/.env
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

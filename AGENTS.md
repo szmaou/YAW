@@ -9,9 +9,8 @@ YAW = Flutter (Riverpod + GoRouter) + Node.js/Express + MariaDB automotive marke
 
 ## Setup — Order Matters
 ```bash
-# 1) DB must exist before backend starts
-docker compose up -d                    # creates yaw + yaw_user/yaw123 on 3306 (volume yaw_data)
-# — or native MariaDB (needs one-time sudo):
+# 1) DB must exist before backend starts (native MariaDB, needs one-time sudo):
+sudo systemctl enable --now mariadb
 sudo mariadb -u root -e "CREATE DATABASE IF NOT EXISTS yaw CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE USER IF NOT EXISTS 'yaw_user'@'%' IDENTIFIED BY 'yaw123'; CREATE USER IF NOT EXISTS 'yaw_user'@'localhost' IDENTIFIED BY 'yaw123'; GRANT ALL ON yaw.* TO 'yaw_user'@'%'; GRANT ALL ON yaw.* TO 'yaw_user'@'localhost'; FLUSH PRIVILEGES;"
 mariadb -u yaw_user -p'yaw123' -h 127.0.0.1 -e "SHOW TABLES FROM yaw;"  # verify
 
@@ -25,13 +24,13 @@ npm run build && npm start  # production: tsc -> node dist/app.js
 flutter pub get && flutter run -d linux   # or -d chrome / android
 # demo login even without DB: admin@yaw.id/admin123; any email + password>=6 -> mock user
 ```
-`.env` is gitignored (`backend/.env`). `DB_PORT=3306` is canonical; `backend/DB_SETUP.md` is a stale diagnostic snapshot (mentions `3307`, `/home/san/...`, claims no compose file) — ignore it. `README.md` still says backend port `3000` — actually `3002`. `tsx watch` does **not** watch `.env` — restart manually after env changes.
+`.env` is gitignored (`backend/.env`). `DB_PORT=3306` is canonical; `backend/DB_SETUP.md` is an archived diagnostic snapshot (now points to `docs/DEPLOY.md` native) — ignore its old port/path claims. `README.md` still says backend port `3000` — actually `3002`. `tsx watch` does **not** watch `.env` — restart manually after env changes.
 
 ## Makefile — Canonical Shortcuts
-Run `make help` for the full list. Makefile is slimmed to deploy (docker) + testing only — dev commands run as raw bash (`docker compose up -d`, `npm run dev`, `flutter run`).
+Run `make help` for the full list. Makefile is slimmed to deploy (native VPS) + testing only — dev commands run as raw bash (`sudo systemctl start mariadb`, `npm run dev`, `flutter run`).
 - `make verify` → `backend-typecheck` + `app-analyze` (both must be 0 errors)
 - `make backend-typecheck / app-analyze / app-test / backend-health` → testing/health primitives
-- `make deploy-build / deploy-up / deploy-down / deploy-logs / deploy-verify / deploy-web-rebuild` → prod via `docker-compose.prod.yml` + `.env.prod` (see `docs/DEPLOY-DOCKER.md`)
+- `make deploy-backend / deploy-web / deploy-restart / deploy-logs / deploy-verify` → prod native (systemd + nginx, run DI VPS setelah `git pull`; see `docs/DEPLOY.md`)
 
 ## Verification (Exact Commands)
 ```bash
@@ -59,14 +58,13 @@ Backend has no test suite and `npm run lint` is broken (no eslint dep/config) �
 - **Locale**: `lib/main.dart` must `await initializeDateFormatting('id_ID', null)` before `runApp`. `lib/core/utils/formatters.dart` is lazy (`_idrCache ??=`) and `date()`/`dateTime()` try/catch fallback to default locale — without both, `OrdersPage`/`AdminDashboard` throw `LocaleDataException`.
 - **DB fail-fast**: `backend/src/config/initDb.ts` races `pool.getConnection()` in 3s; if unreachable it logs `[initDb] skip migrations - pool unreachable` and returns early. `start()` still calls `app.listen` so `/api/health` stays 200 while DB routes return `503` with Indonesian hint. Don't loop per-statement `getConnection` on unreachable pool — it hangs startup for minutes.
 - **`db.ts`**: forces `localhost → 127.0.0.1` to avoid unix socket; `pool.on('error')` is `(pool as any).on('error')` because mariadb types only declare `release`.
-- **`backend/src/config/initDb.ts` fallback**: tries `yaw_user` first, then `root/root123`, `root/''`, `root/$MARIADB_ROOT_PASSWORD` via `mariadb.createConnection` (no DB). On Arch, `root` uses `unix_socket` so those fallbacks fail — use `sudo mariadb` or Docker instead.
-- **`errorHandler.ts` messages** still reference `3310` — actually `3306` after the fix.
-- **Web deploy build**: `docker/Dockerfile.web` strips `dev_dependencies` via awk before `pub get` (keep `pub get`/`build web` in separate RUNs so BuildKit shows which step failed). Reason: `riverpod_lint ^3.1.9` needs Dart >=3.13 but `flutter:stable` image bundles 3.12, and `build web` needs no dev-deps (no `*.g.dart`/`@freezed`/`@riverpod` codegen in `lib/` — verified). All 16 direct prod deps allow Dart 3.12. `deploy.sh` builds with `--pull`; if a build recurs, rerun with `--progress=plain` to see the real log.
+- **`backend/src/config/initDb.ts` fallback**: tries `yaw_user` first, then `root/root123`, `root/''`, `root/$MARIADB_ROOT_PASSWORD` via `mariadb.createConnection` (no DB). On Arch, `root` uses `unix_socket` so those fallbacks fail — use `sudo mariadb` or `sudo systemctl start mariadb` instead.
+- **`errorHandler.ts` messages** use `3306` (canonical port; old `3310` references removed during native migration).
 - **Rebuild caches**: project was moved from `PB/YAW` → `YAW`; absolute CMake/dart-tool caches cause `CMakeCache.txt` mismatch. After any path move: `rm -rf build/ .dart_tool/ && flutter clean && flutter pub get`. `flutter run` router changes need full restart (`R`), not hot reload.
 
 ## Conventions
 - Theme: `lib/app/theme.dart` dark `YawColors` (`#0B0F14` bg, `#00E5FF` primary). Prefer `YawColors.surface/surface2/border` for cards/containers.
 - API base: `http://localhost:3002/api/v1` in `lib/core/constants/app_constants.dart`, overridable via `--dart-define=API_BASE_URL=...` (web release requires it; Android emulator uses `http://10.0.2.2:3002/api/v1`).
-- Uploads served at `/uploads` (`UPLOAD_PATH=./uploads` dev, `/app/uploads` volume `yaw-uploads` in prod).
-- `.gitignore` excludes `.env`, `backend/.env`, `.opencode/`, `node_modules/`, `uploads/`. Commit `backend/.env.example` instead. Note: `.env.prod` is NOT yet in `.gitignore` — do not commit it.
-- `docker-compose.yml` at repo root is the single source of truth for local MariaDB. Prod is Docker-only: `docker-compose.prod.yml` + `.env.prod` (`cp .env.prod.example .env.prod`, `API_BASE_URL` required) via `make deploy-build/deploy-up/deploy-verify` or `scripts/deploy.sh`; DB has no published ports in prod. Web host port defaults to `80` — set `WEB_PORT=8080` in `.env.prod` if it collides (`address already in use`); nginx still listens 80 inside the container. `yaw-backend` builds with repo-root context so `database/migrations` is baked into the image (initDb needs it at `/app/database/...`); root `.dockerignore` keeps that context lean.
+- Uploads served at `/uploads` (`UPLOAD_PATH=./uploads` dev, `/var/lib/yaw/uploads` absolut di prod native).
+- `.gitignore` excludes `.env`, `backend/.env`, `.env.prod`, `.opencode/`, `node_modules/`, `uploads/`. Commit `backend/.env.example` + `.env.prod.example` instead — do not commit real `.env.prod`.
+- Deploy prod native (systemd + nginx + MariaDB): `deploy/yaw-backend.service` + `deploy/nginx-yaw.conf` + `.env.prod` (`cp .env.prod.example /opt/yaw/backend/.env`, `API_BASE_URL` required) via `make deploy-backend/deploy-web/deploy-restart/deploy-verify` DI VPS (see `docs/DEPLOY.md`).

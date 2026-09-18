@@ -18,7 +18,7 @@ export function errorHandler(err: any, _req: Request, res: Response, _next: Next
   if (isPoolTimeout || isConnRefused) {
     return fail(
       res,
-      'Database tidak terhubung. Cek: (1) MariaDB jalan? `docker ps` / `systemctl status mariadb`  (2) Port benar? DB_PORT=3310 → `ss -tlnp | grep 3310` atau `lsof -i :3310` — kalau pakai MariaDB native ganti DB_PORT=3306  (3) `mysql -h 127.0.0.1 -P 3310 -u yaw_user -pyaw123 -e "SELECT 1"`  (4) DB `yaw` & user sudah dibuat? jalankan `database/migrations/001_init.sql`',
+      'Database tidak terhubung. Cek: (1) MariaDB jalan? `systemctl status mariadb` / `ss -tlnp`  (2) Port benar? DB_PORT=3306 → `ss -tlnp | grep 3306` atau `lsof -i :3306`  (3) `mysql -h 127.0.0.1 -P 3306 -u yaw_user -pyaw123 -e "SELECT 1"`  (4) DB `yaw` & user sudah dibuat? jalankan `database/migrations/001_init.sql`',
       503,
     );
   }

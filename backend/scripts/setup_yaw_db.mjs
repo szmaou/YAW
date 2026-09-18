@@ -68,6 +68,6 @@ for (const c of candidates) {
   if (await tryConnect(c)) { ok = true; break; }
 }
 if (!ok) {
-  console.error('\n[FAILED] Could not setup yaw DB on any candidate. Check: docker ps, ss -tlnp, and MARIADB_ROOT_PASSWORD.');
+  console.error('\n[FAILED] Could not setup yaw DB on any candidate. Check: systemctl status mariadb, ss -tlnp, and MARIADB_ROOT_PASSWORD.');
   process.exit(1);
 }

@@ -67,7 +67,7 @@ async function start() {
     console.error('[YAW] initDb failed (API tetap jalan, cek pool):', e?.message || e);
     console.error(
       `[YAW] DB target: ${env.db.host}:${env.db.port}/${env.db.name} as ${env.db.user}. ` +
-      'Start MariaDB first (e.g. `sudo systemctl start mariadb`), or run `docker compose up -d`, ' +
+      'Start MariaDB first (e.g. `sudo systemctl start mariadb`) ' +
       'and confirm the port matches DB_PORT in ./backend/.env (default MariaDB port is 3306).'
     );
   }

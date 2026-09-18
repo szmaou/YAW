@@ -59,3 +59,7 @@ backend/node_modules/
 
 # Uploaded files (served at /uploads)
 uploads/
+
+# Production env (native VPS) — secret, never commit
+.env.prod
+/opt/yaw/backend/.env
