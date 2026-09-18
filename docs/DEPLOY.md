@@ -79,3 +79,29 @@ cd backend && npm ci && npm run build && sudo systemctl restart yaw-backend
 flutter build web --release --dart-define=API_BASE_URL=https://<domain>/api/v1
 sudo rm -rf /var/www/yaw-web && sudo cp -r build/web /var/www/yaw-web
 ```
+
+## Lampiran: setup tanpa hak admin (user-space)
+
+Varian ini tidak memakai `systemd` sistem, `/opt/yaw`, `/var/lib/yaw/uploads`,
+maupun port 80/443 — semua di `$HOME`. Jalankan sebagai user biasa:
+
+```bash
+./scripts/setup-userspace.sh                  # backend saja
+./scripts/setup-userspace.sh --with-web       # + build Flutter web ke $HOME/yaw-web
+./scripts/setup-userspace.sh --with-web --api-base-url=https://<domain>/api/v1
+```
+
+Skrip mengurus: cek prasyarat (tanpa instalasi), clone/pull ke `$HOME/yaw`,
+salin `backend/.env.example` ke `backend/.env` (tidak menimpa bila sudah ada,
+dengan `UPLOAD_PATH=$HOME/yaw-uploads`), `npm ci` + `npm run build`, lalu jalan
+via `systemd --user` bila tersedia (unit di `~/.config/systemd/user/`) atau
+fallback `nohup` (`$HOME/yaw/backend/backend.log`), dan cek
+`http://localhost:3002/api/health`.
+
+Batasan (disengaja, karena tanpa hak admin):
+
+- Pembuatan database/user diserahkan ke admin mesin (lihat langkah 2 di atas);
+  migrasi tabel + seed tetap otomatis saat backend start (initDb).
+- Tidak ada port 80/443 (butuh proses hak admin) — web diserve dari port biasa,
+  mis. `cd $HOME/yaw-web && python3 -m http.server 8080`.
+- Autostart penuh butuh sesi lingering (`loginctl enable-linger $USER` oleh admin).
