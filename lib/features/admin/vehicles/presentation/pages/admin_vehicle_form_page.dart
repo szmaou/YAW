@@ -269,11 +269,12 @@ class _AdminVehicleFormPageState extends ConsumerState<AdminVehicleFormPage> {
                         title: 'Media',
                         icon: Icons.photo_library_outlined,
                         children: [
-                          if (_images.isEmpty && _pendingUploads.isEmpty)
-                            _emptyImagesHint()
-                          else ...[
+                          if (_images.isEmpty && _pendingUploads.isEmpty) ...[
+                            _emptyImagesHint(),
+                            const SizedBox(height: 14),
+                          ] else ...[
                             _imageGrid(),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 16),
                           ],
                           _galleryBtn(),
                         ],
@@ -730,7 +731,7 @@ class _AdminVehicleFormPageState extends ConsumerState<AdminVehicleFormPage> {
         _pendingImageTile(p),
     ];
     if (tiles.isEmpty) return const SizedBox.shrink();
-    return Wrap(spacing: 8, runSpacing: 8, children: tiles);
+    return Wrap(spacing: 10, runSpacing: 10, children: tiles);
   }
 
   Widget _serverImageTile(int index, String url) {
@@ -746,8 +747,8 @@ class _AdminVehicleFormPageState extends ConsumerState<AdminVehicleFormPage> {
                 const _TilePlaceholder(icon: Icons.broken_image_outlined),
           ),
           Positioned(
-            top: 4,
-            right: 4,
+            top: 6,
+            right: 6,
             child: _removeTileBtn(onTap: () => _removeImage(index)),
           ),
         ],
@@ -817,6 +818,13 @@ class _AdminVehicleFormPageState extends ConsumerState<AdminVehicleFormPage> {
           color: YawColors.error.withValues(alpha: .92),
           shape: BoxShape.circle,
           border: Border.all(color: Colors.white.withValues(alpha: .35)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: .35),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
         ),
         child: const Icon(Icons.close, size: 14, color: Colors.white),
       ),
@@ -837,7 +845,7 @@ class _AdminVehicleFormPageState extends ConsumerState<AdminVehicleFormPage> {
               ),
             ),
             if (_cameraSupported) ...[
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
                 child: _mediaPickBtn(
                   icon: Icons.photo_camera_outlined,
@@ -848,7 +856,7 @@ class _AdminVehicleFormPageState extends ConsumerState<AdminVehicleFormPage> {
             ],
           ],
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         Text(
           '$_imageCount/$_maxImages gambar • diunggah otomatis saat dipilih',
           textAlign: TextAlign.center,
@@ -867,7 +875,7 @@ class _AdminVehicleFormPageState extends ConsumerState<AdminVehicleFormPage> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
           color: YawColors.primary.withAlpha(15),
           borderRadius: BorderRadius.circular(14),
