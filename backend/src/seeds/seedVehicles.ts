@@ -10,6 +10,7 @@ import { env } from '../config/env';
  *   and registered as `/uploads/seed/<slug>-{1,2}.jpg` (first = primary).
  * - Existing slugs are skipped, so re-runs never duplicate and real user
  *   data (e.g. vehicles created via admin form) is never touched.
+ *   Missing files/rows for known slugs are healed (copied/re-inserted).
  * - Called by initDb on startup and by `npm run seed` / `npm run seed:vehicles`.
  */
 
@@ -191,9 +192,49 @@ function findSeedAssetsDir(): string | null {
   return candidates.find((p) => fs.existsSync(p)) ?? null;
 }
 
-export async function seedVehicles(): Promise<{ inserted: number; skipped: number }> {
+/**
+ * Ensure the 2 matching photos exist on disk (<UPLOAD_PATH>/seed/) and in
+ * `vehicle_images` for a vehicle. Returns number of healed items (0, 1, 2).
+ * Never deletes or modifies existing rows — only adds what is missing.
+ */
+async function ensureImages(
+  conn: any,
+  seedDir: string,
+  assetsDir: string | null,
+  vehicleId: number,
+  slug: string,
+): Promise<number> {
+  let healed = 0;
+  const rows: any = await conn.query('SELECT image_url FROM vehicle_images WHERE vehicle_id = ?', [vehicleId]);
+  const have = new Set((Array.isArray(rows) ? rows : []).map((r: any) => String(r.image_url)));
+  for (let i = 1; i <= 2; i++) {
+    const file = `${slug}-${i}.jpg`;
+    const url = `/uploads/seed/${file}`;
+    const dest = path.join(seedDir, file);
+    const src = assetsDir ? path.join(assetsDir, file) : null;
+    if (!src || !fs.existsSync(src)) {
+      console.warn(`[seed:vehicles] asset missing for ${slug} view ${i} — skipping image`);
+      continue;
+    }
+    if (!fs.existsSync(dest)) {
+      fs.copyFileSync(src, dest);
+      healed++;
+    }
+    if (!have.has(url)) {
+      await conn.query(
+        'INSERT INTO vehicle_images (vehicle_id, image_url, is_primary) VALUES (?, ?, ?)',
+        [vehicleId, url, i === 1 ? 1 : 0],
+      );
+      healed++;
+    }
+  }
+  return healed;
+}
+
+export async function seedVehicles(): Promise<{ inserted: number; skipped: number; healed: number }> {
   let inserted = 0;
   let skipped = 0;
+  let healed = 0;
   const conn = await pool.getConnection();
   try {
     // category slug -> id
@@ -210,44 +251,34 @@ export async function seedVehicles(): Promise<{ inserted: number; skipped: numbe
 
     for (const v of VEHICLES) {
       const existing: any = await conn.query('SELECT id FROM vehicles WHERE slug = ? LIMIT 1', [v.slug]);
-      if (Array.isArray(existing) && existing.length > 0) {
-        skipped++;
-        continue;
-      }
-      const categoryId = catBySlug.get(v.categorySlug);
-      if (!categoryId) {
-        console.warn(`[seed:vehicles] category '${v.categorySlug}' missing — skipping ${v.slug}`);
-        skipped++;
-        continue;
-      }
-
-      const res: any = await conn.query(
-        'INSERT INTO vehicles (category_id, name, slug, brand, model, year, price, stock, description, engine, transmission, fuel_type, color, is_available) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [categoryId, v.name, v.slug, v.brand, v.model, v.year, v.price, v.stock, v.description, v.engine, v.transmission, v.fuelType, v.color, 1],
-      );
-      const vehicleId = Number(res.insertId);
-      inserted++;
-
-      // 2 matching images per vehicle (side + front)
-      for (let i = 1; i <= 2; i++) {
-        const file = `${v.slug}-${i}.jpg`;
-        const src = assetsDir ? path.join(assetsDir, file) : null;
-        if (src && fs.existsSync(src)) {
-          fs.copyFileSync(src, path.join(seedDir, file));
-          await conn.query(
-            'INSERT INTO vehicle_images (vehicle_id, image_url, is_primary) VALUES (?, ?, ?)',
-            [vehicleId, `/uploads/seed/${file}`, i === 1 ? 1 : 0],
-          );
-        } else {
-          console.warn(`[seed:vehicles] asset missing for ${v.slug} view ${i} — skipping image`);
+      const vehicleId: number | null =
+        Array.isArray(existing) && existing.length > 0 ? Number(existing[0].id) : null;
+      if (vehicleId === null) {
+        const categoryId = catBySlug.get(v.categorySlug);
+        if (!categoryId) {
+          console.warn(`[seed:vehicles] category '${v.categorySlug}' missing — skipping ${v.slug}`);
+          skipped++;
+          continue;
         }
+
+        const res: any = await conn.query(
+          'INSERT INTO vehicles (category_id, name, slug, brand, model, year, price, stock, description, engine, transmission, fuel_type, color, is_available) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [categoryId, v.name, v.slug, v.brand, v.model, v.year, v.price, v.stock, v.description, v.engine, v.transmission, v.fuelType, v.color, 1],
+        );
+        inserted++;
+        healed += await ensureImages(conn, seedDir, assetsDir, Number(res.insertId), v.slug);
+      } else {
+        // Slug exists (older seed or real data) — heal missing files/rows only.
+        const fixed = await ensureImages(conn, seedDir, assetsDir, vehicleId, v.slug);
+        healed += fixed;
+        skipped++;
       }
     }
-    console.log(`[seed:vehicles] done — inserted ${inserted}, skipped ${skipped} (total ${VEHICLES.length})`);
+    console.log(`[seed:vehicles] done — inserted ${inserted}, skipped ${skipped}, healed ${healed} (total ${VEHICLES.length})`);
   } finally {
     conn.release();
   }
-  return { inserted, skipped };
+  return { inserted, skipped, healed };
 }
 
 async function main(): Promise<void> {
