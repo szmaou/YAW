@@ -8,8 +8,7 @@
     "build": "tsc",
     "start": "node dist/app.js",
     "lint": "eslint src --ext .ts",
-    "seed": "tsx src/seeds/seed.ts",
-    "seed:vehicles": "tsx src/seeds/seedVehicles.ts"
+    "seed": "tsx src/seeds/seed.ts"
   },
   "dependencies": {
     "express": "^5.2.1",

@@ -16,8 +16,8 @@ mariadb -u yaw_user -p'yaw123' -h 127.0.0.1 -e "SHOW TABLES FROM yaw;"  # verify
 
 # 2) Backend
 cd backend && cp .env.example .env && npm install && npm run dev   # http://localhost:3002
-# seeded automatically on start (idempotent per slug): admin@yaw.id/admin123 (admin), user@yaw.id/user123 (user) + 3 categories + 20 dummy vehicles (2 real photos each from Wikimedia Commons, /uploads/seed/ from backend/seed-assets/, see seed-assets/SOURCES.md)
-npm run seed   # idempotent re-seed (users + categories + vehicles)
+# seeded automatically on first empty-DB start: admin@yaw.id/admin123 (admin), user@yaw.id/user123 (user) + 3 categories
+npm run seed   # idempotent re-seed
 npm run build && npm start  # production: tsc -> node dist/app.js
 
 # 3) Flutter
