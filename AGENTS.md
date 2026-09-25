@@ -24,13 +24,13 @@ npm run build && npm start  # production: tsc -> node dist/app.js
 flutter pub get && flutter run -d linux   # or -d chrome / android
 # demo login even without DB: admin@yaw.id/admin123; any email + password>=6 -> mock user
 ```
-`.env` is gitignored (`backend/.env`). `DB_PORT=3306` is canonical; `backend/DB_SETUP.md` is an archived diagnostic snapshot (now points to `docs/DEPLOY.md` native) — ignore its old port/path claims. `README.md` still says backend port `3000` — actually `3002`. `tsx watch` does **not** watch `.env` — restart manually after env changes.
+`.env` is gitignored (`backend/.env`). `DB_PORT=3306` is canonical. `README.md` still says backend port `3000` — actually `3002`. `tsx watch` does **not** watch `.env` — restart manually after env changes.
 
 ## Makefile — Canonical Shortcuts
-Run `make help` for the full list. Makefile is slimmed to deploy (native VPS) + testing only — dev commands run as raw bash (`sudo systemctl start mariadb`, `npm run dev`, `flutter run`).
+Run `make help` for the full list. Makefile is slimmed to deploy (Docker Compose) + testing only — dev commands run as raw bash (`sudo systemctl start mariadb`, `npm run dev`, `flutter run`).
 - `make verify` → `backend-typecheck` + `app-analyze` (both must be 0 errors)
 - `make backend-typecheck / app-analyze / app-test / backend-health` → testing/health primitives
-- `make deploy-backend / deploy-web / deploy-restart / deploy-logs / deploy-verify` → prod native (systemd + nginx, run DI VPS setelah `git pull`; see `docs/DEPLOY.md`)
+- `make deploy-web / deploy-up / deploy-backend / deploy-restart / deploy-logs / deploy-verify / deploy-down` → prod Docker (db + backend + web, run DI VPS setelah `git pull`; see `docs/DEPLOY.md`)
 
 ## Verification (Exact Commands)
 ```bash
@@ -65,6 +65,6 @@ Backend has no test suite and `npm run lint` is broken (no eslint dep/config) �
 ## Conventions
 - Theme: `lib/app/theme.dart` dark `YawColors` (`#0B0F14` bg, `#00E5FF` primary). Prefer `YawColors.surface/surface2/border` for cards/containers.
 - API base: `http://localhost:3002/api/v1` in `lib/core/constants/app_constants.dart`, overridable via `--dart-define=API_BASE_URL=...` (web release requires it; Android emulator uses `http://10.0.2.2:3002/api/v1`).
-- Uploads served at `/uploads` (`UPLOAD_PATH=./uploads` dev, `/var/lib/yaw/uploads` absolut di prod native).
-- `.gitignore` excludes `.env`, `backend/.env`, `.env.prod`, `.opencode/`, `node_modules/`, `uploads/`. Commit `backend/.env.example` + `.env.prod.example` instead — do not commit real `.env.prod`.
-- Deploy prod native (systemd + nginx + MariaDB): `deploy/yaw-backend.service` + `deploy/nginx-yaw.conf` + `.env.prod` (`cp .env.prod.example /opt/yaw/backend/.env`, `API_BASE_URL` required) via `make deploy-backend/deploy-web/deploy-restart/deploy-verify` DI VPS (see `docs/DEPLOY.md`).
+- Uploads served at `/uploads` (`UPLOAD_PATH=./uploads` dev, `/app/uploads` volume di prod Docker).
+- `.gitignore` excludes `.env`, `backend/.env`, `.env.local`. Commit `backend/.env.example` + `.env.docker.example` instead — do not commit real `.env`.
+- Deploy prod Docker (compose: `db` MariaDB 11.4 + `backend` Node + `web` nginx, root `.env` dari `cp .env.docker.example .env`, `API_BASE_URL` di-bake via `make deploy-web`) via `make deploy-web/deploy-up/deploy-restart/deploy-verify` DI VPS (see `docs/DEPLOY.md`).

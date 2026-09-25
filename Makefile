@@ -1,7 +1,7 @@
-# YAW — Flutter + Express + MariaDB (native VPS deploy + testing)
-# `make help` lists all targets. Fokus: deploy native (systemd+nginx) + testing.
+# YAW — Flutter + Express + MariaDB (deploy Docker Compose + testing)
+# `make help` lists all targets. Fokus: deploy Docker + testing.
 # Dev lokal: MariaDB native (systemctl), npm (backend), flutter (app).
-# Deploy target di bawah ini jalan DI VPS setelah git pull.
+# Deploy target di bawah ini jalan DI VPS setelah git pull (butuh docker + flutter).
 
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
@@ -11,11 +11,11 @@ BACKEND_DIR := backend
 # ── help ──────────────────────────────────────────────────────────
 .PHONY: help
 help: ## Show this help
-	@echo "YAW — make targets (native deploy + testing)"
+	@echo "YAW — make targets (deploy Docker + testing)"
 	@echo ""
 	@grep -E '^[a-zA-Z0-9_/-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-22s\033[0m %s\n", $$1, $$2}'
 	@echo ""
-	@echo "Deploy:   cp .env.prod.example /opt/yaw/backend/.env (isi secret) && make deploy-backend deploy-web"
+	@echo "Deploy:   cp .env.docker.example .env (isi secret) && make deploy-web deploy-up"
 	@echo "Env dev:  cp backend/.env.example backend/.env (isi sesuai lokal)"
 	@echo "Testing:  make verify  (tsc + dart analyze, 0 errors)  |  make app-test"
 
@@ -38,26 +38,32 @@ backend-health: ## Curl health + login (butuh backend jalan)
 	@curl -s http://localhost:3002/api/health | head -c 500; echo
 	@curl -s -X POST http://localhost:3002/api/v1/auth/login -H 'Content-Type: application/json' -d '{"email":"admin@yaw.id","password":"admin123"}' | head -c 700; echo
 
-# ── deploy (production native: systemd + nginx + MariaDB, jalan DI VPS) ──
-.PHONY: deploy-backend deploy-web deploy-restart deploy-logs deploy-verify
+# ── deploy (production Docker Compose: db + backend + web, jalan DI VPS) ──
+.PHONY: deploy-backend deploy-web deploy-up deploy-down deploy-restart deploy-logs deploy-verify
 
-deploy-backend: ## Build backend + restart service (VPS)
-	cd $(BACKEND_DIR) && npm ci && npm run build && sudo systemctl restart yaw-backend
-
-deploy-web: ## Build web + copy ke /var/www/yaw-web (VPS; butuh API_BASE_URL dari .env.prod)
-	@if [ -f /opt/yaw/backend/.env ]; then set -a; . /opt/yaw/backend/.env; set +a; fi; \
-	if [ -f .env.prod ]; then set -a; . ./.env.prod; set +a; fi; \
-	if [ -z "$${API_BASE_URL:-}" ]; then echo "API_BASE_URL kosong — isi API_BASE_URL di /opt/yaw/backend/.env atau .env.prod"; exit 1; fi; \
+deploy-web: ## Build Flutter web ke build/web (VPS; butuh API_BASE_URL dari .env)
+	@if [ -f .env ]; then set -a; . ./.env; set +a; fi; \
+	if [ -z "$${API_BASE_URL:-}" ]; then echo "API_BASE_URL kosong — salin .env.docker.example ke .env lalu isi API_BASE_URL"; exit 1; fi; \
 	flutter build web --release --dart-define=API_BASE_URL=$${API_BASE_URL}
-	# Konfirmasi path docroot sebelum copy (default /var/www/yaw-web):
-	sudo rm -rf /var/www/yaw-web && sudo cp -r build/web /var/www/yaw-web
 
-deploy-restart: ## Restart backend + reload nginx (VPS)
-	sudo systemctl restart yaw-backend && sudo systemctl reload nginx
+deploy-backend: ## Build + jalankan ulang service backend+db (VPS)
+	docker compose up -d --build db backend
 
-deploy-logs: ## Follow log backend via journalctl (VPS)
-	journalctl -u yaw-backend -f
+deploy-up: ## Build + jalankan semua service (db+backend+web) (VPS)
+	@if [ ! -f .env ]; then echo ".env tidak ada — salin dulu: cp .env.docker.example .env"; exit 1; fi
+	@if [ ! -f build/web/index.html ]; then echo "build/web kosong — jalan dulu: make deploy-web"; exit 1; fi
+	docker compose up -d --build
 
-deploy-verify: ## Curl health lokal + petunjuk login seed (VPS)
+deploy-down: ## Hentikan semua service (data db-data/uploads tetap ada)
+	docker compose down
+
+deploy-restart: ## Restart service backend + web (VPS)
+	docker compose restart backend web
+
+deploy-logs: ## Follow log backend (VPS)
+	docker compose logs -f backend
+
+deploy-verify: ## Curl health via nginx + backend langsung + petunjuk login seed (VPS)
+	curl -s http://localhost/api/health | head -c 500; echo
 	curl -s http://localhost:3002/api/health | head -c 500; echo
 	@echo "Login seed: admin@yaw.id / admin123 (POST /api/v1/auth/login, ganti setelah masuk)."

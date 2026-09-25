@@ -1,0 +1,66 @@
+services:
+  db:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?isi DB_ROOT_PASSWORD di .env}
+      MARIADB_DATABASE: ${DB_NAME:-yaw}
+      MARIADB_USER: ${DB_USER:-yaw_user}
+      MARIADB_PASSWORD: ${DB_PASSWORD:?isi DB_PASSWORD di .env}
+    volumes:
+      - db-data:/var/lib/mysql
+    # Jangan expose 3306 ke host by default (bentrok bila host juga jalan MariaDB).
+    # Butuh akses langsung? odkomen baris ports di bawah.
+    # ports:
+    #   - "3306:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Override yg wajib tetap menunjuk service compose (abaikan nilai di .env):
+      DB_HOST: db
+      APP_PORT: "3002"
+      UPLOAD_PATH: /app/uploads
+      # Dipakai initDb root-fallback saat database/user belum ada:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?isi DB_ROOT_PASSWORD di .env}
+    volumes:
+      - uploads:/app/uploads
+    ports:
+      - "${APP_PORT:-3002}:3002"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3002/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  web:
+    image: nginx:alpine
+    restart: unless-stopped
+    volumes:
+      # Hasil `make deploy-web` (flutter build web). Read-only.
+      - ./build/web:/usr/share/nginx/html:ro
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  db-data:
+  uploads:
