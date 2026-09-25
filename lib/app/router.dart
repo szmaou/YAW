@@ -39,9 +39,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       final loading = auth.isLoading;
       if (loading) return null;
       if (isSplash) return loggedIn ? '/home' : '/login';
-      if (!loggedIn && !isAuthRoute && !loc.startsWith('/vehicles')) {
-        // allow browsing vehicles without login, but protect fav/orders/account/profiles/admin
-        if (loc.startsWith('/favorites') || loc.startsWith('/orders') || loc.startsWith('/account') || loc.startsWith('/profiles') || loc.startsWith('/admin')) {
+      if (!loggedIn && !isAuthRoute && !loc.startsWith('/vehicles') && !loc.startsWith('/profiles')) {
+        // allow browsing vehicles + profiles (static team info) without login,
+        // but protect fav/orders/account/admin
+        if (loc.startsWith('/favorites') || loc.startsWith('/orders') || loc.startsWith('/account') || loc.startsWith('/admin')) {
           return '/login';
         }
       }
