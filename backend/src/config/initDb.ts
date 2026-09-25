@@ -4,6 +4,7 @@ import mariadb, { Connection, PoolConnection } from 'mariadb';
 import { env } from './env';
 import { pool } from './db';
 import { seedDefaults } from '../seeds/seed';
+import { seedVehicles } from '../seeds/seedVehicles';
 
 function resolveHost(h: string) {
   return h === 'localhost' ? '127.0.0.1' : h;
@@ -148,11 +149,10 @@ export async function initDb(): Promise<void> {
      throw e;
    }
 
-  // 5) Seed default admin/demo users + categories (idempotent)
-  //    Ensures a real admin exists so auth middleware + GET /users works,
-  //    instead of relying on a mock token fallback.
+  // 5) Seed defaults (idempotent): users + categories, then 20 dummy vehicles
   try {
     await seedDefaults();
+    await seedVehicles();
   } catch (e: any) {
     console.error('[initDb] seeding skipped/failed (API continues):', e?.message || e);
   }

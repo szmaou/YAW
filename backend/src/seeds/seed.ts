@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { pool } from '../config/db';
+import { seedVehicles } from './seedVehicles';
 
 /**
  * Shared, idempotent default-seeding routine.
@@ -79,12 +80,15 @@ async function main(): Promise<void> {
     conn = undefined;
 
     await seedDefaults();
+    await seedVehicles();
 
     // Report final counts.
     conn = await pool.getConnection();
     const u: any = await conn.query('SELECT COUNT(*) as total FROM users');
     const c: any = await conn.query('SELECT COUNT(*) as total FROM vehicle_categories');
-    console.log(`[seed] summary — users: ${Number(u.total)}, categories: ${Number(c.total)}`);
+    const v: any = await conn.query('SELECT COUNT(*) as total FROM vehicles');
+    const countOf = (r: any) => Number(Array.isArray(r) ? r[0]?.total : r?.total);
+    console.log(`[seed] summary — users: ${countOf(u)}, categories: ${countOf(c)}, vehicles: ${countOf(v)}`);
   } catch (e: any) {
     console.error('[seed] failed:', e?.message || e);
     process.exitCode = 1;
