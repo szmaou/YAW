@@ -14,6 +14,10 @@ class HomePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final catsAsync = ref.watch(categoriesProvider);
     final veh = ref.watch(vehicleListProvider);
+    // Statistik katalog dinamis — dihitung dari MariaDB via API:
+    // total kendaraan (meta `total` dari GET /vehicles) & jumlah kategori (GET /categories).
+    final vehicleCount = veh.total;
+    final categoryCount = catsAsync.value?.length ?? 0;
     return Scaffold(
       body: CustomScrollView(slivers: [
         SliverAppBar(
@@ -29,7 +33,7 @@ class HomePage extends ConsumerWidget {
           ]),
           bottom: PreferredSize(preferredSize: const Size.fromHeight(1), child: Container(height:1, color: YawColors.border)),
         ),
-        SliverToBoxAdapter(child: _Hero(onExplore: ()=> context.go('/vehicles'), heroImageUrl: veh.data.isNotEmpty ? ApiConstants.resolveImageUrl(veh.data.first.primaryImage) : null)),
+        SliverToBoxAdapter(child: _Hero(onExplore: ()=> context.go('/vehicles'), heroImageUrl: veh.data.isNotEmpty ? ApiConstants.resolveImageUrl(veh.data.first.primaryImage) : null, vehicleCount: vehicleCount, categoryCount: categoryCount)),
         SliverToBoxAdapter(child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
           child: Row(children: [
@@ -82,6 +86,8 @@ class HomePage extends ConsumerWidget {
               mainAxisSpacing: 12, crossAxisSpacing: 12, childAspectRatio: .72),
           ),
         ),
+        if (!veh.isLoading && veh.error == null && veh.data.isNotEmpty)
+          SliverToBoxAdapter(child: _CatalogStats(vehicleCount: vehicleCount, categoryCount: categoryCount)),
         SliverToBoxAdapter(child: _WhySection()),
         SliverToBoxAdapter(child: Container(margin: const EdgeInsets.all(16), padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(gradient: LinearGradient(colors: [YawColors.primary.withValues(alpha:.18), YawColors.secondary.withValues(alpha:.18)]), borderRadius: BorderRadius.circular(16), border: Border.all(color: YawColors.border)),
@@ -100,9 +106,11 @@ class HomePage extends ConsumerWidget {
 }
 
 class _Hero extends StatelessWidget {
-  const _Hero({required this.onExplore, this.heroImageUrl});
+  const _Hero({required this.onExplore, this.heroImageUrl, required this.vehicleCount, required this.categoryCount});
   final VoidCallback onExplore;
   final String? heroImageUrl;
+  final int vehicleCount;
+  final int categoryCount;
   @override
   Widget build(BuildContext context) {
     final isMobile = Responsive.isMobile(context);
@@ -128,8 +136,8 @@ class _Hero extends StatelessWidget {
               OutlinedButton(onPressed: onExplore, child: const Text('LIHAT KATALOG')),
             ]),
             const SizedBox(height:14),
-            const Wrap(spacing:16, children: [
-              _Stat(v:'120+', l:'Vehicles'), _Stat(v:'6', l:'Categories'), _Stat(v:'24/7', l:'Support'),
+            Wrap(spacing:16, children: [
+              _Stat(v:'$vehicleCount', l:'Vehicles'), _Stat(v:'$categoryCount', l:'Categories'), const _Stat(v:'24/7', l:'Support'),
             ])
           ])),
           if (!isMobile) ...[
@@ -149,6 +157,23 @@ class _Hero extends StatelessWidget {
   }
 }
 class _Stat extends StatelessWidget { const _Stat({required this.v, required this.l}); final String v,l; @override Widget build(BuildContext context)=> Column(crossAxisAlignment: CrossAxisAlignment.start, children:[Text(v, style: const TextStyle(fontWeight: FontWeight.w800, color: YawColors.primary)), Text(l, style: const TextStyle(fontSize:10, color: YawColors.textDim))]); }
+
+/// Teks statistik di bawah katalog unggulan — angka dari MariaDB via API.
+class _CatalogStats extends StatelessWidget {
+  const _CatalogStats({required this.vehicleCount, required this.categoryCount});
+  final int vehicleCount;
+  final int categoryCount;
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Center(
+        child: Text('$vehicleCount kendaraan, $categoryCount kategori',
+          style: const TextStyle(fontSize: 12, color: YawColors.textMuted)),
+      ),
+    );
+  }
+}
 
 class _WhySection extends StatelessWidget {
   @override
