@@ -7,31 +7,40 @@ Host hanya butuh **podman** (+ **flutter** untuk build web) — tanpa
 systemd unit manual, nginx host, maupun MariaDB native. Podman daemonless
 dan bisa jalan rootless.
 
-## 1. Prasyarat
+## 1. Prasyarat (sebagai user root di VPS)
 
 ```bash
-sudo apt install podman podman-compose
+apt update && apt install -y podman podman-compose curl git unzip xz-utils zip
 podman --version          # butuh Podman 4.1+
 podman compose version    # bila gagal, pakai `podman-compose` (lihat §8)
+systemctl enable --now podman.socket   # socket rootful untuk `podman compose`
+```
+
+Sebagai root, bind port 80 dan akses socket tidak jadi masalah
+(tanpa sysctl tambahan, tanpa sudo di perintah mana pun).
+
+### Install Flutter (satu kali)
+
+Flutter tidak ada di apt — clone SDK stable ke `/opt/flutter`:
+
+```bash
+git clone https://github.com/flutter/flutter.git -b stable /opt/flutter
+export PATH="$PATH:/opt/flutter/bin"
+echo 'export PATH="$PATH:/opt/flutter/bin"' >> ~/.bashrc
+flutter --disable-analytics
+flutter precache --web
 flutter --version         # untuk `make deploy-web`
 ```
 
-`podman compose` rootless butuh user socket (sekali saja, tanpa sudo):
+<details>
+<summary>Catatan bila deploy sebagai user biasa (bukan root)</summary>
 
-```bash
-systemctl --user enable --now podman.socket
-loginctl enable-linger $USER   # agar socket tetap hidup setelah logout (minta admin bila perlu)
-```
-
-Rootless + port 80: user biasa tidak boleh bind port < 1024. Sekali saja:
-
-```bash
-echo 'net.ipv4.ip_unprivileged_port_start=80' | sudo tee /etc/sysctl.d/99-podman.conf
-sudo sysctl --system
-```
-
-(Alternatif: jalankan compose sebagai root via `sudo podman compose ...` —
-maka sysctl di atas tidak perlu.)
+- `podman compose` rootless butuh user socket:
+  `systemctl --user enable --now podman.socket` +
+  `loginctl enable-linger $USER`.
+- User biasa tidak boleh bind port < 1024 — sekali saja sebagai admin:
+  `echo 'net.ipv4.ip_unprivileged_port_start=80' > /etc/sysctl.d/99-podman.conf && sysctl --system`.
+</details>
 
 ## 2. Env deploy
 
@@ -109,7 +118,7 @@ Podman lama (< 4.1) tidak punya subcommand `compose` bawaan. Pakai paket
 `podman-compose` (Python) sebagai pengganti 1:1:
 
 ```bash
-sudo apt install podman-compose  # atau: pip install podman-compose
+apt install podman-compose  # atau: pip install podman-compose
 podman-compose up -d --build
 ```
 
