@@ -1,23 +1,35 @@
-# YAW — Deploy Docker (Compose: db + backend + web)
+# YAW — Deploy Podman (Compose: db + backend + web)
 
 Panduan ringkas Bahasa Indonesia untuk VPS Linux (Ubuntu).
-Satu `docker compose up` menjalankan MariaDB 11.4, backend Node, dan nginx
+Satu `podman compose up` menjalankan MariaDB 11.4, backend Node, dan nginx
 yang menyajikan Flutter web + proxy `/api/` dan `/uploads/` ke backend.
-Host hanya butuh **docker** (+ **flutter** untuk build web) — tanpa
-systemd unit, nginx host, maupun MariaDB native.
+Host hanya butuh **podman** (+ **flutter** untuk build web) — tanpa
+systemd unit manual, nginx host, maupun MariaDB native. Podman daemonless
+dan bisa jalan rootless.
 
 ## 1. Prasyarat
 
 ```bash
-docker --version          # butuh Docker 24+ (compose v2)
-docker compose version
+sudo apt install podman podman-compose
+podman --version          # butuh Podman 4.1+
+podman compose version    # bila gagal, pakai `podman-compose` (lihat §8)
 flutter --version         # untuk `make deploy-web`
 ```
+
+Rootless + port 80: user biasa tidak boleh bind port < 1024. Sekali saja:
+
+```bash
+echo 'net.ipv4.ip_unprivileged_port_start=80' | sudo tee /etc/sysctl.d/99-podman.conf
+sudo sysctl --system
+```
+
+(Alternatif: jalankan compose sebagai root via `sudo podman compose ...` —
+maka sysctl di atas tidak perlu.)
 
 ## 2. Env deploy
 
 ```bash
-cp .env.docker.example .env   # lalu isi nilai CHANGE_ME
+cp .env.podman.example .env   # lalu isi nilai CHANGE_ME
 ```
 
 Isi penting: `DB_PASSWORD` + `DB_ROOT_PASSWORD` (acak, `openssl rand -base64 24`),
@@ -32,8 +44,8 @@ selalu listen di port internal `3002` (`APP_PORT` hanya mengatur port host).
 
 ```bash
 make deploy-web   # flutter build web --release (API_BASE_URL dari .env) -> build/web
-make deploy-up    # docker compose up -d --build (cek .env + build/web dulu)
-docker compose ps
+make deploy-up    # podman compose up -d --build (cek .env + build/web dulu)
+podman compose ps
 ```
 
 Boot pertama: service `db` dibuat dari image `mariadb:11.4` (database + user
@@ -50,16 +62,16 @@ curl -s -X POST http://localhost/api/v1/auth/login -H 'Content-Type: application
 ## 5. Operasional
 
 ```bash
-make deploy-logs      # docker compose logs -f backend
+make deploy-logs      # podman compose logs -f backend
 make deploy-restart   # restart backend + web
 make deploy-backend   # rebuild + up ulang db + backend saja
 make deploy-down      # stop semua (volume db-data/uploads tetap ada)
-docker compose exec db mariadb -u root -p -e "SHOW TABLES FROM yaw;"
+podman compose exec db mariadb -u root -p -e "SHOW TABLES FROM yaw;"
 ```
 
-Backup data: `docker run --rm -v yaw_db-data:/data -v $PWD:/b alpine tar czf /b/db-backup.tgz /data`
-Uploads: `docker run --rm -v yaw_uploads:/data -v $PWD:/b alpine tar czf /b/uploads-backup.tgz /data`
-(Nama volume aktual: cek `docker volume ls`; prefix mengikuti nama folder project.)
+Backup data: `podman run --rm -v yaw_db-data:/data -v $PWD:/b alpine tar czf /b/db-backup.tgz /data`
+Uploads: `podman run --rm -v yaw_uploads:/data -v $PWD:/b alpine tar czf /b/uploads-backup.tgz /data`
+(Nama volume aktual: cek `podman volume ls`; prefix mengikuti nama folder project.)
 
 ## 6. TLS
 
@@ -83,3 +95,16 @@ cd ~/yaw && git pull   # folder checkout repo di VPS
 make deploy-web     # bila frontend berubah (API_BASE_URL ikut ke-bake ulang)
 make deploy-up      # rebuild image backend bila perlu + restart semua
 ```
+
+## 8. Bila `podman compose` tidak tersedia
+
+Podman lama (< 4.1) tidak punya subcommand `compose` bawaan. Pakai paket
+`podman-compose` (Python) sebagai pengganti 1:1:
+
+```bash
+sudo apt install podman-compose  # atau: pip install podman-compose
+podman-compose up -d --build
+```
+
+Semua target `make deploy-*` memakai `podman compose`; bila memakai
+`podman-compose`, jalankan perintah compose manual sesuai contoh di atas.

@@ -1,6 +1,6 @@
 # YAW backend — multi-stage build. Build context = repo root
 # (butuh backend/ + database/migrations/ untuk initDb).
-#   docker build -f backend/Dockerfile .
+#   podman build -f backend/Dockerfile .
 
 FROM node:22-alpine AS build
 WORKDIR /app
