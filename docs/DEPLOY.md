@@ -16,6 +16,13 @@ podman compose version    # bila gagal, pakai `podman-compose` (lihat §8)
 flutter --version         # untuk `make deploy-web`
 ```
 
+`podman compose` rootless butuh user socket (sekali saja, tanpa sudo):
+
+```bash
+systemctl --user enable --now podman.socket
+loginctl enable-linger $USER   # agar socket tetap hidup setelah logout (minta admin bila perlu)
+```
+
 Rootless + port 80: user biasa tidak boleh bind port < 1024. Sekali saja:
 
 ```bash

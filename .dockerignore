@@ -1,0 +1,28 @@
+# Build context untuk image backend (backend/Dockerfile, context = repo root).
+# Hanya backend/ + database/ yang dibutuhkan initDb & tsc.
+.git/
+.opencode/
+build/
+.dart_tool/
+.flutter-plugins-dependencies
+android/
+ios/
+linux/
+macos/
+windows/
+web/
+assets/
+lib/
+test/
+docs/
+deploy/
+scripts/
+Makefile
+*.md
+*.iml
+.metadata
+.env*
+backend/node_modules/
+backend/dist/
+backend/uploads/
+backend/*.log
