@@ -1,7 +1,8 @@
 # YAW — Flutter + Express + MariaDB (deploy Podman Compose + testing)
 # `make help` lists all targets. Fokus: deploy Podman + testing.
 # Dev lokal: MariaDB native (systemctl), npm (backend), flutter (app).
-# Deploy target di bawah ini jalan DI VPS setelah git pull (butuh podman + flutter).
+# Deploy: build web + Release di mesin dev (butuh flutter + gh),
+#   jalan DI VPS setelah fetch release (butuh podman + git + curl).
 
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
@@ -15,7 +16,8 @@ help: ## Show this help
 	@echo ""
 	@grep -E '^[a-zA-Z0-9_/-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-22s\033[0m %s\n", $$1, $$2}'
 	@echo ""
-	@echo "Deploy:   cp .env.podman.example .env (isi secret) && make deploy-web deploy-up"
+	@echo "Deploy:   (dev) make deploy-web release-web  |  (VPS) make deploy-fetch-web deploy-up"
+	@echo "  web: build→tarball→GitHub Release di dev; VPS fetch release (tanpa flutter)"
 	@echo "Env dev:  cp backend/.env.example backend/.env (isi sesuai lokal)"
 	@echo "Testing:  make verify  (tsc + dart analyze, 0 errors)  |  make app-test"
 
@@ -38,10 +40,11 @@ backend-health: ## Curl health + login (butuh backend jalan)
 	@curl -s http://localhost:3002/api/health | head -c 500; echo
 	@curl -s -X POST http://localhost:3002/api/v1/auth/login -H 'Content-Type: application/json' -d '{"email":"admin@yaw.id","password":"admin123"}' | head -c 700; echo
 
-# ── deploy (production Podman Compose: db + backend + web, jalan DI VPS) ──
-.PHONY: deploy-backend deploy-web deploy-up deploy-down deploy-restart deploy-logs deploy-verify
+# ── deploy (production Podman Compose: db + backend + web) ──
+# Web tidak di-commit: dev build → publish ke GitHub Release → VPS fetch.
+.PHONY: deploy-backend deploy-web release-web deploy-fetch-web deploy-up deploy-down deploy-restart deploy-logs deploy-verify
 
-deploy-web: ## Build Flutter web ke deploy/web + commit (di mesin dev; butuh API_BASE_URL dari .env)
+deploy-web: ## Build Flutter web ke deploy/web (di mesin dev; butuh API_BASE_URL dari .env)
 	@if [ -f .env ]; then set -a; . ./.env; set +a; fi; \
 	if [ -z "$${API_BASE_URL:-}" ]; then echo "API_BASE_URL kosong — salin .env.podman.example ke .env lalu isi API_BASE_URL"; exit 1; fi; \
 	flutter build web --release --no-web-resources-cdn -o deploy/web --dart-define=API_BASE_URL=$${API_BASE_URL}
@@ -49,12 +52,30 @@ deploy-web: ## Build Flutter web ke deploy/web + commit (di mesin dev; butuh API
 	find deploy/web -name '*.symbols' -delete
 	@du -sh deploy/web
 
+release-web: ## Tarball deploy/web + publish GitHub Release (dev; butuh gh login; VERSION=vX default dari pubspec)
+	@if [ ! -f deploy/web/index.html ]; then echo "deploy/web kosong — jalan dulu: make deploy-web"; exit 1; fi
+	@TAG="$(VERSION)"; [ -z "$$TAG" ] && TAG="v$$(grep '^version:' pubspec.yaml | awk '{print $$2}')"; \
+	tar czf "/tmp/yaw-web-$${TAG}.tar.gz" -C deploy web && \
+	gh release create "$${TAG}" "/tmp/yaw-web-$${TAG}.tar.gz" --title "YAW $${TAG} (web)" --notes "Build web Flutter (isi deploy/web). API_BASE_URL di-bake saat build." && \
+	rm -f "/tmp/yaw-web-$${TAG}.tar.gz"
+
+deploy-fetch-web: ## Download + extract build web dari GitHub Release terbaru (VPS; butuh gh/curl)
+	@if [ -f deploy/web/index.html ]; then echo "deploy/web sudah ada — hapus dulu bila mau fetch ulang"; exit 0; fi; \
+	if command -v gh >/dev/null 2>&1; then gh release download --pattern 'yaw-web-*.tar.gz' --dir /tmp; else \
+	  REPO=$$(git config --get remote.origin.url | sed -E 's#.*github\.com[:/]([^/]+/[^/]+?)(\.git)?$$#\1#'); \
+	  URL=$$(curl -s "https://api.github.com/repos/$${REPO}/releases/latest" | grep -o 'https://[^"]*yaw-web-[^"]*\.tar\.gz' | head -1); \
+	  [ -z "$$URL" ] && { echo "gagal dapat URL release"; exit 1; }; \
+	  curl -sL "$$URL" -o /tmp/yaw-web-latest.tar.gz; fi; \
+	TGZ=$$(ls -t /tmp/yaw-web-*.tar.gz 2>/dev/null | head -1); \
+	mkdir -p deploy && tar xzf "$$TGZ" -C deploy && rm -f "$$TGZ" && \
+	ls deploy/web/index.html && du -sh deploy/web
+
 deploy-backend: ## Build + jalankan ulang service backend+db (VPS)
 	podman compose up -d --build db backend
 
 deploy-up: ## Jalankan semua service (db+backend+web) (VPS)
 	@if [ ! -f .env ]; then echo ".env tidak ada — salin dulu: cp .env.podman.example .env"; exit 1; fi
-	@if [ ! -f deploy/web/index.html ]; then echo "deploy/web kosong — di mesin dev jalan dulu: make deploy-web + commit + push, lalu git pull di sini"; exit 1; fi
+	@if [ ! -f deploy/web/index.html ]; then echo "deploy/web kosong — di mesin dev: make deploy-web release-web; di sini: make deploy-fetch-web"; exit 1; fi
 	podman compose up -d --build
 
 deploy-down: ## Hentikan semua service (data db-data/uploads tetap ada)

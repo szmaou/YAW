@@ -59,3 +59,7 @@ backend/node_modules/
 
 # Uploaded files (served at /uploads)
 uploads/
+
+# Prebuilt web (diambil dari GitHub Release via `make deploy-fetch-web`,
+# bukan dari git — lihat `make release-web`)
+/deploy/web/

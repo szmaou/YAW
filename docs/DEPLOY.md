@@ -3,14 +3,15 @@
 Panduan ringkas Bahasa Indonesia untuk VPS Linux (Ubuntu).
 Satu `podman compose up` menjalankan MariaDB 11.4, backend Node, dan nginx
 yang menyajikan Flutter web + proxy `/api/` dan `/uploads/` ke backend.
-Host hanya butuh **podman** (+ **flutter** untuk build web) — tanpa
-systemd unit manual, nginx host, maupun MariaDB native. Podman daemonless
-dan bisa jalan rootless.
+Host hanya butuh **podman** + **git** + **curl** — tanpa Flutter
+(build web dikerjakan di mesin dev, diambil via GitHub Release),
+tanpa systemd unit manual, nginx host, maupun MariaDB native.
+Podman daemonless dan bisa jalan rootless.
 
 ## 1. Prasyarat (sebagai user root di VPS)
 
 ```bash
-apt update && apt install -y podman podman-compose curl git unzip xz-utils zip
+apt update && apt install -y podman podman-compose curl git
 podman --version          # butuh Podman 4.1+
 podman compose version    # bila gagal, pakai `podman-compose` (lihat §8)
 systemctl enable --now podman.socket   # socket rootful untuk `podman compose`
@@ -19,18 +20,8 @@ systemctl enable --now podman.socket   # socket rootful untuk `podman compose`
 Sebagai root, bind port 80 dan akses socket tidak jadi masalah
 (tanpa sysctl tambahan, tanpa sudo di perintah mana pun).
 
-### Install Flutter (satu kali)
-
-Flutter tidak ada di apt — clone SDK stable ke `/opt/flutter`:
-
-```bash
-git clone https://github.com/flutter/flutter.git -b stable /opt/flutter
-export PATH="$PATH:/opt/flutter/bin"
-echo 'export PATH="$PATH:/opt/flutter/bin"' >> ~/.bashrc
-flutter --disable-analytics
-flutter precache --web
-flutter --version         # untuk `make deploy-web`
-```
+Flutter hanya dibutuhkan di **mesin dev** (untuk `make deploy-web` +
+`make release-web`): install SDK stable + `gh` (GitHub CLI, sudah login).
 
 <details>
 <summary>Catatan bila deploy sebagai user biasa (bukan root)</summary>
@@ -56,23 +47,25 @@ Isi penting: `DB_PASSWORD` + `DB_ROOT_PASSWORD` (acak, `openssl rand -base64 24`
 Catatan: `DB_HOST` harus tetap `db` (nama service compose); container backend
 selalu listen di port internal `3002` (`APP_PORT` hanya mengatur port host).
 
-## 3. Build web (di mesin dev) + up (di VPS)
+## 3. Build + Release (di mesin dev), fetch + up (di VPS)
 
-Web di-build di mesin pengembang, hasilnya (`deploy/web/`, ~36 MB termasuk
-canvaskit lokal) di-commit ke git — VPS tinggal pull, tanpa Flutter:
+Hasil build web **tidak di-commit** — dipublish sebagai asset GitHub Release
+(`yaw-web-v*.tar.gz`, ~36 MB termasuk canvaskit lokal), VPS fetch + extract:
 
 ```bash
 # --- di mesin dev ---
 cp .env.podman.example .env   # isi API_BASE_URL domain produksi
-make deploy-web   # flutter build web -o deploy/web (API_BASE_URL di-bake) + hapus *.symbols
-git add deploy/web Makefile compose.yaml && git commit -m "Update build web" && git push
+make deploy-web    # flutter build web -o deploy/web (API_BASE_URL di-bake) + hapus *.symbols
+rm -f .env
+make release-web   # tarball + `gh release create` (tag default v<versi-pubspec>, override: VERSION=vX)
 ```
 
 ```bash
 # --- di VPS ---
 git pull
 cp .env.podman.example .env   # sekali saja, lalu isi secret (DB_*, JWT_SECRET)
-make deploy-up    # podman compose up -d --build (cek .env + deploy/web dulu)
+make deploy-fetch-web  # download + extract release terbaru ke deploy/web (butuh gh/curl)
+make deploy-up         # podman compose up -d --build
 podman compose ps
 ```
 
@@ -120,11 +113,11 @@ server {
 
 ```bash
 # --- di mesin dev (bila frontend berubah) ---
-make deploy-web   # API_BASE_URL ikut ke-bake ulang
-git add deploy/web && git commit -m "Update build web" && git push
+make deploy-web release-web   # API_BASE_URL ikut ke-bake ulang; tag naik bila versi pubspec naik
 
 # --- di VPS ---
-cd ~/yaw && git pull   # folder checkout repo di VPS
+cd ~/yaw && git pull           # folder checkout repo di VPS
+rm -rf deploy/web && make deploy-fetch-web  # ambil build terbaru (lewati bila versi sama)
 make deploy-up      # rebuild image backend bila perlu + restart semua
 ```
 
