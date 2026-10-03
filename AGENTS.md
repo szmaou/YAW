@@ -67,4 +67,4 @@ Backend has no test suite and `npm run lint` is broken (no eslint dep/config) �
 - API base: `http://localhost:3002/api/v1` in `lib/core/constants/app_constants.dart`, overridable via `--dart-define=API_BASE_URL=...` (web release requires it; Android emulator uses `http://10.0.2.2:3002/api/v1`).
 - Uploads served at `/uploads` (`UPLOAD_PATH=./uploads` dev, `/app/uploads` volume di prod Podman).
 - `.gitignore` excludes `.env`, `backend/.env`, `.env.local`. Commit `backend/.env.example` + `.env.podman.example` instead — do not commit real `.env`.
-- Deploy prod Podman (compose: `db` MariaDB 11.4 + `backend` Node + `web` nginx, root `.env` dari `cp .env.podman.example .env`, `API_BASE_URL` di-bake via `make deploy-web`) via `make deploy-web/deploy-up/deploy-restart/deploy-verify` DI VPS (see `docs/DEPLOY.md`).
+- Deploy prod Podman (compose: `db` MariaDB 11.4 + `backend` Node + `web` nginx, root `.env` dari `cp .env.podman.example .env`; web di-build di mesin dev via `make deploy-web` ke `deploy/web/` lalu di-commit — VPS tinggal `git pull` + `make deploy-up`) (see `docs/DEPLOY.md`).

@@ -41,17 +41,20 @@ backend-health: ## Curl health + login (butuh backend jalan)
 # ── deploy (production Podman Compose: db + backend + web, jalan DI VPS) ──
 .PHONY: deploy-backend deploy-web deploy-up deploy-down deploy-restart deploy-logs deploy-verify
 
-deploy-web: ## Build Flutter web ke build/web (VPS; butuh API_BASE_URL dari .env)
+deploy-web: ## Build Flutter web ke deploy/web + commit (di mesin dev; butuh API_BASE_URL dari .env)
 	@if [ -f .env ]; then set -a; . ./.env; set +a; fi; \
 	if [ -z "$${API_BASE_URL:-}" ]; then echo "API_BASE_URL kosong — salin .env.podman.example ke .env lalu isi API_BASE_URL"; exit 1; fi; \
-	flutter build web --release --dart-define=API_BASE_URL=$${API_BASE_URL}
+	flutter build web --release --no-web-resources-cdn -o deploy/web --dart-define=API_BASE_URL=$${API_BASE_URL}
+	# Hapus file .symbols (debug, ~6MB) — tidak dibutuhkan runtime:
+	find deploy/web -name '*.symbols' -delete
+	@du -sh deploy/web
 
 deploy-backend: ## Build + jalankan ulang service backend+db (VPS)
 	podman compose up -d --build db backend
 
-deploy-up: ## Build + jalankan semua service (db+backend+web) (VPS)
+deploy-up: ## Jalankan semua service (db+backend+web) (VPS)
 	@if [ ! -f .env ]; then echo ".env tidak ada — salin dulu: cp .env.podman.example .env"; exit 1; fi
-	@if [ ! -f build/web/index.html ]; then echo "build/web kosong — jalan dulu: make deploy-web"; exit 1; fi
+	@if [ ! -f deploy/web/index.html ]; then echo "deploy/web kosong — di mesin dev jalan dulu: make deploy-web + commit + push, lalu git pull di sini"; exit 1; fi
 	podman compose up -d --build
 
 deploy-down: ## Hentikan semua service (data db-data/uploads tetap ada)
