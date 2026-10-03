@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:yaw/app/theme.dart';
 import 'package:yaw/core/constants/app_constants.dart';
+import 'package:yaw/core/utils/responsive.dart';
 import 'package:yaw/core/widgets/app_error_view.dart';
 import 'package:yaw/features/admin/shared/admin_app_bar.dart';
 import 'package:yaw/features/vehicles/data/vehicle_repository.dart';
@@ -26,7 +27,7 @@ class _AdminVehiclesPageState extends ConsumerState<AdminVehiclesPage> {
           ? const AppLoadingView()
           : state.error != null && state.data.isEmpty
               ? AppErrorView(message: state.error!, onRetry: () => ref.read(vehicleListProvider.notifier).load(refresh: true))
-              : _buildBody(state),
+              : _buildBody(context, state),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/admin/vehicles/new'),
         backgroundColor: YawColors.primary,
@@ -37,9 +38,10 @@ class _AdminVehiclesPageState extends ConsumerState<AdminVehiclesPage> {
     );
   }
 
-  Widget _buildBody(VehicleListState state) {
+  Widget _buildBody(BuildContext context, VehicleListState state) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      _header(),
+      // Header kolom tabel hanya relevan untuk layout tabel (tablet/desktop).
+      if (!Responsive.isMobile(context)) _header(),
       Expanded(
         child: state.data.isEmpty
             ? const AppEmptyView(
@@ -87,7 +89,72 @@ class _AdminVehiclesPageState extends ConsumerState<AdminVehiclesPage> {
         ]),
       );
 
-  Widget _row(BuildContext context, Vehicle v) => InkWell(
+  /// Mobile (< 600px): kartu stacked — tombol edit/hapus selalu muat karena
+  /// tidak lagi dipaksa ke dalam kolom tabel sempit.
+  /// Tablet/desktop: baris tabel seperti semula.
+  Widget _row(BuildContext context, Vehicle v) =>
+      Responsive.isMobile(context) ? _mobileCard(context, v) : _tableRow(context, v);
+
+  Widget _thumb(Vehicle v) => Container(
+        width: 44, height: 44,
+        decoration: BoxDecoration(color: YawColors.surface2, borderRadius: BorderRadius.circular(8), border: Border.all(color: YawColors.border)),
+        clipBehavior: Clip.antiAlias,
+        child: v.primaryImage.isNotEmpty
+            ? CachedNetworkImage(imageUrl: ApiConstants.resolveImageUrl(v.primaryImage), fit: BoxFit.cover,
+                errorWidget: (_, __, ___) => const Icon(Icons.directions_car_rounded, size: 22, color: YawColors.textDim))
+            : const Icon(Icons.directions_car_rounded, size: 22, color: YawColors.textDim),
+      );
+
+  /// Tombol aksi compact (36px) supaya muat di layar sempit.
+  Widget _actionButtons(BuildContext context, Vehicle v) => Row(mainAxisSize: MainAxisSize.min, children: [
+        _compactIconButton(
+          tooltip: 'Edit', icon: Icons.edit_outlined, color: YawColors.textMuted,
+          onPressed: () => context.push('/admin/vehicles/${v.id}/edit'),
+        ),
+        _compactIconButton(
+          tooltip: 'Hapus', icon: Icons.delete_outline_rounded, color: YawColors.error,
+          onPressed: () => _confirmDelete(context, v, ref.read(vehicleRepositoryProvider)),
+        ),
+      ]);
+
+  Widget _compactIconButton({required String tooltip, required IconData icon, required Color color, required VoidCallback onPressed}) => IconButton(
+        tooltip: tooltip,
+        icon: Icon(icon, size: 20),
+        color: color,
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+        visualDensity: VisualDensity.compact,
+        onPressed: onPressed,
+      );
+
+  Widget _mobileCard(BuildContext context, Vehicle v) => InkWell(
+        onTap: () => context.push('/vehicles/${v.id}'),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: YawColors.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: YawColors.border)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              _thumb(v),
+              const SizedBox(width: 10),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('${v.brand} ${v.name}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                Text(v.model, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: YawColors.textMuted)),
+              ])),
+              _actionButtons(context, v),
+            ]),
+            const SizedBox(height: 10),
+            Row(children: [
+              Expanded(child: Text(v.displayPrice, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700))),
+              Text(v.category?.name ?? '-', style: const TextStyle(fontSize: 11, color: YawColors.textMuted)),
+              const SizedBox(width: 8),
+              Text('Stok ${v.stock}', style: TextStyle(fontSize: 11, color: v.stock > 0 ? YawColors.textPrimary : YawColors.error, fontWeight: FontWeight.w600)),
+            ]),
+          ]),
+        ),
+      );
+
+  Widget _tableRow(BuildContext context, Vehicle v) => InkWell(
         onTap: () => context.push('/vehicles/${v.id}'),
         borderRadius: BorderRadius.circular(12),
         child: Container(
@@ -97,15 +164,7 @@ class _AdminVehiclesPageState extends ConsumerState<AdminVehiclesPage> {
             Expanded(
               flex: 10,
               child: Row(children: [
-                Container(
-                  width: 44, height: 44,
-                  decoration: BoxDecoration(color: YawColors.surface2, borderRadius: BorderRadius.circular(8), border: Border.all(color: YawColors.border)),
-                  clipBehavior: Clip.antiAlias,
-                  child: v.primaryImage.isNotEmpty
-                      ? CachedNetworkImage(imageUrl: ApiConstants.resolveImageUrl(v.primaryImage), fit: BoxFit.cover,
-                          errorWidget: (_, __, ___) => const Icon(Icons.directions_car_rounded, size: 22, color: YawColors.textDim))
-                      : const Icon(Icons.directions_car_rounded, size: 22, color: YawColors.textDim),
-                ),
+                _thumb(v),
                 const SizedBox(width: 10),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('${v.brand} ${v.name}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
@@ -119,9 +178,7 @@ class _AdminVehiclesPageState extends ConsumerState<AdminVehiclesPage> {
             Expanded(
               flex: 3,
               child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                IconButton(tooltip: 'Edit', icon: const Icon(Icons.edit_outlined, size: 18), color: YawColors.textMuted, onPressed: () => context.push('/admin/vehicles/${v.id}/edit')),
-                const SizedBox(width: 4),
-                IconButton(tooltip: 'Hapus', icon: const Icon(Icons.delete_outline_rounded, size: 18), color: YawColors.error, onPressed: () => _confirmDelete(context, v, ref.read(vehicleRepositoryProvider))),
+                _actionButtons(context, v),
               ]),
             ),
           ]),
