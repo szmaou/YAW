@@ -52,8 +52,8 @@ services:
     image: docker.io/library/nginx:alpine
     restart: unless-stopped
     volumes:
-      # Hasil `make deploy-web` (flutter build web). Read-only.
-      - ./build/web:/usr/share/nginx/html:ro
+      # Hasil `make deploy-web` di mesin dev (di-commit ke git). Read-only.
+      - ./deploy/web:/usr/share/nginx/html:ro
       - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
       - "80:80"

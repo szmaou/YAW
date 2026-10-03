@@ -56,11 +56,23 @@ Isi penting: `DB_PASSWORD` + `DB_ROOT_PASSWORD` (acak, `openssl rand -base64 24`
 Catatan: `DB_HOST` harus tetap `db` (nama service compose); container backend
 selalu listen di port internal `3002` (`APP_PORT` hanya mengatur port host).
 
-## 3. Build web + up
+## 3. Build web (di mesin dev) + up (di VPS)
+
+Web di-build di mesin pengembang, hasilnya (`deploy/web/`, ~36 MB termasuk
+canvaskit lokal) di-commit ke git — VPS tinggal pull, tanpa Flutter:
 
 ```bash
-make deploy-web   # flutter build web --release (API_BASE_URL dari .env) -> build/web
-make deploy-up    # podman compose up -d --build (cek .env + build/web dulu)
+# --- di mesin dev ---
+cp .env.podman.example .env   # isi API_BASE_URL domain produksi
+make deploy-web   # flutter build web -o deploy/web (API_BASE_URL di-bake) + hapus *.symbols
+git add deploy/web Makefile compose.yaml && git commit -m "Update build web" && git push
+```
+
+```bash
+# --- di VPS ---
+git pull
+cp .env.podman.example .env   # sekali saja, lalu isi secret (DB_*, JWT_SECRET)
+make deploy-up    # podman compose up -d --build (cek .env + deploy/web dulu)
 podman compose ps
 ```
 
@@ -107,8 +119,12 @@ server {
 ## 7. Update flow
 
 ```bash
+# --- di mesin dev (bila frontend berubah) ---
+make deploy-web   # API_BASE_URL ikut ke-bake ulang
+git add deploy/web && git commit -m "Update build web" && git push
+
+# --- di VPS ---
 cd ~/yaw && git pull   # folder checkout repo di VPS
-make deploy-web     # bila frontend berubah (API_BASE_URL ikut ke-bake ulang)
 make deploy-up      # rebuild image backend bila perlu + restart semua
 ```
 
