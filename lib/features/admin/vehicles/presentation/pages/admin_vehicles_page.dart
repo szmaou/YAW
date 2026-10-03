@@ -84,7 +84,7 @@ class _AdminVehiclesPageState extends ConsumerState<AdminVehiclesPage> {
           Expanded(flex: 4, child: Text('KATEGORI', style: TextStyle(fontSize: 10, letterSpacing: 1.2, fontWeight: FontWeight.w700, color: YawColors.textDim))),
           Expanded(flex: 3, child: Text('HARGA', style: TextStyle(fontSize: 10, letterSpacing: 1.2, fontWeight: FontWeight.w700, color: YawColors.textDim))),
           Expanded(flex: 2, child: Text('STOK', style: TextStyle(fontSize: 10, letterSpacing: 1.2, fontWeight: FontWeight.w700, color: YawColors.textDim))),
-          Expanded(flex: 3, child: SizedBox()),
+          const SizedBox(width: 84),
         ]),
       );
 
@@ -173,8 +173,10 @@ class _AdminVehiclesPageState extends ConsumerState<AdminVehiclesPage> {
             Expanded(flex: 4, child: Text(v.category?.name ?? '-', style: const TextStyle(fontSize: 12, color: YawColors.textMuted))),
             Expanded(flex: 3, child: Text(v.displayPrice, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700))),
             Expanded(flex: 2, child: Text('Stok ${v.stock}', style: TextStyle(fontSize: 12, color: v.stock > 0 ? YawColors.textPrimary : YawColors.error, fontWeight: FontWeight.w600))),
-            Expanded(
-              flex: 3,
+            // Kolom aksi lebar tetap (bukan flex): 2 tombol tidak pernah
+            // terjepit berapa pun sempitnya layar tablet.
+            SizedBox(
+              width: 84,
               child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
                 _actionButtons(context, v),
               ]),
