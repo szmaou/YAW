@@ -6,6 +6,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../core/widgets/app_error_view.dart';
 import '../../../../shared/widgets/vehicle_card.dart';
+import '../../../../shared/widgets/vehicle_image.dart';
 import '../../../vehicles/presentation/providers/vehicle_providers.dart';
 
 class HomePage extends ConsumerWidget {
@@ -146,7 +147,7 @@ class _Hero extends StatelessWidget {
               child: AspectRatio(
                 aspectRatio: 1.4,
                 child: (heroImageUrl != null && heroImageUrl!.isNotEmpty)
-                  ? Image.network(heroImageUrl!, fit: BoxFit.cover, errorBuilder: (_,__,___)=> Container(color: YawColors.surface2, child: const Icon(Icons.directions_car_rounded, size:48, color: YawColors.textDim)))
+                  ? VehicleImage(imageUrl: heroImageUrl!, iconSize: 48)
                   : Container(color: YawColors.surface2, child: const Icon(Icons.directions_car_rounded, size:48, color: YawColors.textDim)),
               )),
             ),

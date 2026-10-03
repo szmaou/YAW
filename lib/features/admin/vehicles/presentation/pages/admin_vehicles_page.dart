@@ -1,12 +1,11 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:yaw/app/theme.dart';
-import 'package:yaw/core/constants/app_constants.dart';
 import 'package:yaw/core/utils/responsive.dart';
 import 'package:yaw/core/widgets/app_error_view.dart';
 import 'package:yaw/features/admin/shared/admin_app_bar.dart';
+import 'package:yaw/shared/widgets/vehicle_image.dart';
 import 'package:yaw/features/vehicles/data/vehicle_repository.dart';
 import 'package:yaw/features/vehicles/presentation/providers/vehicle_providers.dart';
 import 'package:yaw/shared/models/vehicle.dart';
@@ -100,8 +99,7 @@ class _AdminVehiclesPageState extends ConsumerState<AdminVehiclesPage> {
         decoration: BoxDecoration(color: YawColors.surface2, borderRadius: BorderRadius.circular(8), border: Border.all(color: YawColors.border)),
         clipBehavior: Clip.antiAlias,
         child: v.primaryImage.isNotEmpty
-            ? CachedNetworkImage(imageUrl: ApiConstants.resolveImageUrl(v.primaryImage), fit: BoxFit.cover,
-                errorWidget: (_, __, ___) => const Icon(Icons.directions_car_rounded, size: 22, color: YawColors.textDim))
+            ? VehicleImage(imageUrl: v.primaryImage, iconSize: 22, retryIconSize: 16)
             : const Icon(Icons.directions_car_rounded, size: 22, color: YawColors.textDim),
       );
 

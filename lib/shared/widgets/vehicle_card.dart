@@ -1,9 +1,8 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../../app/theme.dart';
-import '../../core/constants/app_constants.dart';
 import '../../core/utils/formatters.dart';
 import '../models/vehicle.dart';
+import 'vehicle_image.dart';
 
 class VehicleCard extends StatelessWidget {
   const VehicleCard({super.key, required this.vehicle, this.onTap, this.onFavorite, this.isFavorite=false, this.compact=false});
@@ -31,12 +30,7 @@ class VehicleCard extends StatelessWidget {
             child: Stack(children: [
               Positioned.fill(
                 child: vehicle.primaryImage.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: ApiConstants.resolveImageUrl(vehicle.primaryImage),
-                        fit: BoxFit.cover,
-                        placeholder: (_,__) => Container(color: YawColors.surface2),
-                        errorWidget: (_,__,___) => _placeholder(),
-                      )
+                    ? VehicleImage(imageUrl: vehicle.primaryImage)
                     : _placeholder(),
               ),
               Positioned(

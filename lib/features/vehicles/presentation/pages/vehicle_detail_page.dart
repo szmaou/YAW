@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +7,7 @@ import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../core/widgets/app_error_view.dart';
 import '../../../../core/widgets/yaw_button.dart';
+import '../../../../shared/widgets/vehicle_image.dart';
 import '../providers/vehicle_providers.dart';
 import '../../../favorites/presentation/providers/favorites_provider.dart';
 
@@ -56,9 +56,7 @@ class _S extends ConsumerState<VehicleDetailPage> {
                 child: Stack(children: [
                   Positioned.fill(
                     child: images[_imgIdx].isNotEmpty
-                      ? CachedNetworkImage(imageUrl: images[_imgIdx], fit: BoxFit.cover,
-                          placeholder: (_,__)=> Container(color: YawColors.surface2),
-                          errorWidget: (_,__,___)=> Container(color: YawColors.surface2, child: const Icon(Icons.directions_car_rounded, size:48, color: YawColors.textDim)))
+                      ? VehicleImage(imageUrl: images[_imgIdx], iconSize: 48)
                       : Container(color: YawColors.surface2, child: const Icon(Icons.directions_car_rounded, size:48, color: YawColors.textDim)),
                   ),
                   if (images.length>1) Positioned(
@@ -85,7 +83,7 @@ class _S extends ConsumerState<VehicleDetailPage> {
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: images[i].isNotEmpty
-                    ? CachedNetworkImage(imageUrl: images[i], fit: BoxFit.cover, errorWidget: (_,__,___)=> Container(color: YawColors.surface2))
+                    ? VehicleImage(imageUrl: images[i], iconSize: 24, retryIconSize: 14)
                     : Container(color: YawColors.surface2),
                 ),
               ),
