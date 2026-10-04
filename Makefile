@@ -62,10 +62,13 @@ release-web: ## Tarball deploy/web + publish GitHub Release (dev; butuh gh login
 deploy-fetch-web: ## Download + extract build web dari GitHub Release terbaru (VPS; butuh gh/curl)
 	@if [ -f deploy/web/index.html ]; then echo "deploy/web sudah ada — hapus dulu bila mau fetch ulang"; exit 0; fi; \
 	if command -v gh >/dev/null 2>&1; then gh release download --pattern 'yaw-web-*.tar.gz' --dir /tmp; else \
-	  REPO=$$(git config --get remote.origin.url | sed -E 's#.*github\.com[:/]([^/]+/[^/]+?)(\.git)?$$#\1#'); \
-	  URL=$$(curl -s "https://api.github.com/repos/$${REPO}/releases/latest" | grep -o 'https://[^"]*yaw-web-[^"]*\.tar\.gz' | head -1); \
-	  [ -z "$$URL" ] && { echo "gagal dapat URL release"; exit 1; }; \
-	  curl -sL "$$URL" -o /tmp/yaw-web-latest.tar.gz; fi; \
+	  REPO=$$(git config --get remote.origin.url | sed -E 's#.*github\.com[:/]##; s#\.git$$##'); \
+	  [ -z "$$REPO" ] && { echo "gagal baca remote origin — cek 'git remote -v'"; exit 1; }; \
+	  TAG=$$(git ls-remote --tags origin 2>/dev/null | grep -o 'refs/tags/v[^^{]*' | sed 's#refs/tags/##' | sort -V | tail -1); \
+	  [ -z "$$TAG" ] && { echo "gagal baca tags dari origin ($$REPO) — cek koneksi git / pasang gh: apt install gh && gh auth login"; exit 1; }; \
+	  echo "fetch yaw-web-$${TAG}.tar.gz dari $${REPO} ..."; \
+	  curl -fSL "https://github.com/$${REPO}/releases/download/$${TAG}/yaw-web-$${TAG}.tar.gz" -o /tmp/yaw-web-fetch.tar.gz || \
+	  { echo "download gagal — cek koneksi ke github.com / pasang gh: apt install gh && gh auth login"; exit 1; }; fi; \
 	TGZ=$$(ls -t /tmp/yaw-web-*.tar.gz 2>/dev/null | head -1); \
 	mkdir -p deploy && tar xzf "$$TGZ" -C deploy && rm -f "$$TGZ" && \
 	ls deploy/web/index.html && du -sh deploy/web
