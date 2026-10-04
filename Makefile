@@ -70,7 +70,9 @@ deploy-fetch-web: ## Download + extract build web dari GitHub Release terbaru (V
 	  curl -fSL "https://github.com/$${REPO}/releases/download/$${TAG}/yaw-web-$${TAG}.tar.gz" -o /tmp/yaw-web-fetch.tar.gz || \
 	  { echo "download gagal — cek koneksi ke github.com / pasang gh: apt install gh && gh auth login"; exit 1; }; fi; \
 	TGZ=$$(ls -t /tmp/yaw-web-*.tar.gz 2>/dev/null | head -1); \
-	mkdir -p deploy && tar xzf "$$TGZ" -C deploy && rm -f "$$TGZ" && \
+	[ -n "$$TGZ" ] || { echo "file tarball tidak ditemukan di /tmp — download mungkin gagal"; exit 1; }; \
+	echo "extract $$TGZ ..."; \
+	mkdir -p deploy && tar --extract --gzip --file="$$TGZ" --directory=deploy && rm -f "$$TGZ" && \
 	ls deploy/web/index.html && du -sh deploy/web
 
 deploy-backend: ## Build + jalankan ulang service backend+db (VPS)
