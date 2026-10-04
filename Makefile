@@ -42,7 +42,7 @@ backend-health: ## Curl health + login (butuh backend jalan)
 
 # ── deploy (production Podman Compose: db + backend + web) ──
 # Web tidak di-commit: dev build → publish ke GitHub Release → VPS fetch.
-.PHONY: deploy-backend deploy-web release-web deploy-fetch-web deploy-up deploy-down deploy-restart deploy-logs deploy-verify
+.PHONY: deploy-backend deploy-web release-web release-apk deploy-fetch-web deploy-up deploy-down deploy-restart deploy-logs deploy-verify
 
 deploy-web: ## Build Flutter web ke deploy/web (di mesin dev; butuh API_BASE_URL dari .env)
 	@if [ -f .env ]; then set -a; . ./.env; set +a; fi; \
@@ -51,6 +51,14 @@ deploy-web: ## Build Flutter web ke deploy/web (di mesin dev; butuh API_BASE_URL
 	# Hapus file .symbols (debug, ~6MB) — tidak dibutuhkan runtime:
 	find deploy/web -name '*.symbols' -delete
 	@du -sh deploy/web
+
+release-apk: ## Build APK + upload ke GitHub Release (dev; butuh API_BASE_URL dari .env + gh login)
+	@if [ -f .env ]; then set -a; . ./.env; set +a; fi; \
+	if [ -z "$${API_BASE_URL:-}" ]; then echo "API_BASE_URL kosong — salin .env.podman.example ke .env lalu isi API_BASE_URL"; exit 1; fi; \
+	flutter build apk --release --dart-define=API_BASE_URL=$${API_BASE_URL} && \
+	TAG="v$$(grep '^version:' pubspec.yaml | awk '{print $$2}')" && \
+	APK="/tmp/yaw-$${TAG}.apk" && cp build/app/outputs/flutter-apk/app-release.apk "$$APK" && \
+	gh release upload "$${TAG}" "$$APK" --clobber && rm -f "$$APK" && ls -la build/app/outputs/flutter-apk/
 
 release-web: ## Tarball deploy/web + publish GitHub Release (dev; butuh gh login; VERSION=vX default dari pubspec)
 	@if [ ! -f deploy/web/index.html ]; then echo "deploy/web kosong — jalan dulu: make deploy-web"; exit 1; fi
