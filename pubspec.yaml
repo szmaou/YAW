@@ -9,7 +9,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.8
   flutter_riverpod: ^3.4.3
   riverpod_annotation: ^4.0.7
   go_router: ^18.0.1
@@ -18,12 +17,15 @@ dependencies:
   shared_preferences: ^2.3.3
   cached_network_image: ^4.0.0
   intl: ^0.20.2
+  # 9.0.0 memakai TextTheme milik material_ui (bukan Flutter) — tidak
+  # kompatibel dengan ThemeData.textTheme di Flutter 3.47.x. Naik kalau
+  # google_fonts >=9.1 fix, atau bila Flutter SDK re-export material_ui.
   google_fonts: ^8.2.1
   image_picker: ^1.1.2
   uuid: ^4.5.1
   shimmer: ^4.0.0
   url_launcher: ^6.3.1
-  equatable: ^2.0.5
+  equatable: ^3.0.0
 
 dev_dependencies:
   flutter_test:
