@@ -47,6 +47,7 @@ const _developers = <_Developer>[
         'Saya senang mempelajari hal-hal baru. Saya juga terus berusaha mengembangkan kemampuan dan kreativitas untuk menjadi lebih baik lagi. '
         'Di luar teknologi saya juga memiliki hobi beternak dan senang merawat hewan. '
         'Bagi saya kegiatan tersebut mengajarkan tanggung jawab, kesabaran, dan ketekunan.',
+    link: 'https://cv.cnp.my.id/src/farida/cv.php',
   ),
   _Developer(
     name: 'Shinta Ramadhani',
