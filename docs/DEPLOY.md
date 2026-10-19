@@ -13,7 +13,7 @@ Podman daemonless dan bisa jalan rootless.
 ```bash
 apt update && apt install -y podman podman-compose curl git
 podman --version          # butuh Podman 4.1+
-podman compose version    # bila gagal, pakai `podman-compose` (lihat §8)
+podman compose version    # bila gagal, pakai `podman-compose` (lihat §9)
 systemctl enable --now podman.socket   # socket rootful untuk `podman compose`
 ```
 
@@ -121,7 +121,31 @@ rm -rf deploy/web && make deploy-fetch-web  # ambil build terbaru (lewati bila v
 make deploy-up      # rebuild image backend bila perlu + restart semua
 ```
 
-## 8. Bila `podman compose` tidak tersedia
+## 8. Auto-start saat boot (systemd)
+
+Stack bisa otomatis naik lagi setelah VPS reboot dengan unit yang sudah
+disediakan: `deploy/yaw-compose.service` (root dan rootless — lihat komentar
+di dalam file untuk kedua jalurnya).
+
+Jalur root (tanpa sudo, sesuai §1):
+
+```bash
+cp deploy/yaw-compose.service /etc/systemd/system/
+# edit WorkingDirectory ke folder checkout repo di VPS (mis. /root/yaw)
+systemctl daemon-reload
+systemctl enable --now yaw-compose.service
+systemctl status yaw-compose.service   # cek active (exited) + `podman compose ps`
+```
+
+Restart env `.env` tidak ikut berubah saat boot. `git pull` **tidak** dijalankan
+unit (deploy tetap manual lewat §7 agar tak ada kejutan saat reboot); yang
+dilakukan unit hanyalah `podman compose up -d --build`.
+
+Variant rootless (user biasa): salin unit ke `~/.config/systemd/user/`,
+`systemctl --user enable --now yaw-compose.service`, dan penting:
+`loginctl enable-linger $USER` supaya unit tetap jalan tanpa sesi login aktif.
+
+## 9. Bila `podman compose` tidak tersedia
 
 Podman lama (< 4.1) tidak punya subcommand `compose` bawaan. Pakai paket
 `podman-compose` (Python) sebagai pengganti 1:1:
