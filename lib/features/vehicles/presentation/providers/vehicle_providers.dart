@@ -49,10 +49,13 @@ class VehicleListNotifier extends StateNotifier<VehicleListState> {
         page: state.page+1, limit: state.query.limit, search: state.query.search,
         category: state.query.category, brand: state.query.brand,
         minPrice: state.query.minPrice, maxPrice: state.query.maxPrice,
-        year: state.query.year, fuelType: state.query.fuelType, transmission: state.query.transmission);
+        year: state.query.year, fuelType: state.query.fuelType, transmission: state.query.transmission,
+        sort: state.query.sort);
       final res = await _repo.getVehicles(next);
+      if (!mounted) return;
       state = state.copyWith(data:[...state.data, ...res.data], page:res.page, total:res.total, isLoadingMore:false, query:next);
     } catch (e) {
+      if (!mounted) return;
       state = state.copyWith(isLoadingMore:false, error:e.toString());
     }
   }

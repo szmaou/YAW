@@ -19,7 +19,16 @@ class _S extends ConsumerState<VehicleListPage> {
   String? _brand, _fuel, _trans;
   double? _min, _max;
   String? _cat;
+  String? _sort;
   bool _showFilter = false;
+
+  /// Opsi urut — nilai dikirim ke API, label Bahasa Indonesia.
+  static const _sortOptions = <(String, String)>[
+    ('newest', 'Terbaru'),
+    ('oldest', 'Terlama'),
+    ('price_asc', 'Harga ↑'),
+    ('price_desc', 'Harga ↓'),
+  ];
 
   @override
   void didChangeDependencies() {
@@ -36,8 +45,44 @@ class _S extends ConsumerState<VehicleListPage> {
   void _apply() {
     ref.read(vehicleListProvider.notifier).load(query: VehicleQuery(
       search: _searchCtrl.text.trim().isEmpty? null : _searchCtrl.text.trim(),
-      brand: _brand, fuelType: _fuel, transmission: _trans, minPrice: _min, maxPrice: _max, category: _cat,
+      brand: _brand, fuelType: _fuel, transmission: _trans, minPrice: _min, maxPrice: _max, category: _cat, sort: _sort,
     ));
+  }
+
+  /// Baris urut: label statis di kiri, chip pilihan menggulir horizontal (aman di 320px).
+  Widget _sortBar() => Padding(
+    padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+    child: Row(children: [
+      const Icon(Icons.swap_vert_rounded, size:16, color: YawColors.textMuted),
+      const SizedBox(width:6),
+      const Text('Urutkan', style: TextStyle(color: YawColors.textMuted, fontSize:12, fontWeight: FontWeight.w600)),
+      const SizedBox(width:10),
+      Expanded(child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(children: [ for (final (value, label) in _sortOptions) _sortChip(value, label) ]),
+      )),
+    ]),
+  );
+
+  Widget _sortChip(String value, String label) {
+    final selected = _sort == value;
+    return Padding(
+      padding: const EdgeInsets.only(right:8),
+      child: ChoiceChip(
+        label: Text(label),
+        selected: selected,
+        showCheckmark: false,
+        onSelected: (v) { if (v) { setState(()=> _sort = value); _apply(); } },
+        labelStyle: TextStyle(fontSize:12, fontWeight: selected? FontWeight.w600 : FontWeight.w500, color: selected? YawColors.background : YawColors.textMuted),
+        selectedColor: YawColors.primary,
+        backgroundColor: YawColors.surface2,
+        side: BorderSide(color: selected? YawColors.primary : YawColors.border),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        visualDensity: VisualDensity.compact,
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        padding: const EdgeInsets.symmetric(horizontal:6),
+      ),
+    );
   }
 
   @override
@@ -66,6 +111,7 @@ class _S extends ConsumerState<VehicleListPage> {
             ),
           ),
         ),
+        _sortBar(),
         if (_showFilter) Container(
           margin: const EdgeInsets.symmetric(horizontal:12),
           padding: const EdgeInsets.all(12),
@@ -90,7 +136,7 @@ class _S extends ConsumerState<VehicleListPage> {
             ]),
             const SizedBox(height:10),
             Row(children: [
-              Expanded(child: OutlinedButton(onPressed: (){ setState(()=> _brand=null); setState(()=> _fuel=null); setState(()=> _trans=null); setState(()=> _min=null); setState(()=> _max=null); setState(()=> _cat=null); _searchCtrl.clear(); _apply();}, child: const Text('RESET'))),
+              Expanded(child: OutlinedButton(onPressed: (){ setState(()=> _brand=null); setState(()=> _fuel=null); setState(()=> _trans=null); setState(()=> _min=null); setState(()=> _max=null); setState(()=> _cat=null); setState(()=> _sort=null); _searchCtrl.clear(); _apply();}, child: const Text('RESET'))),
               const SizedBox(width:8),
               Expanded(child: ElevatedButton(onPressed: _apply, child: const Text('TERAPKAN'))),
             ]),

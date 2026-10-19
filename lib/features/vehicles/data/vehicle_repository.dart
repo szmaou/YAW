@@ -6,9 +6,11 @@ import '../../../core/errors/exceptions.dart';
 import '../../../shared/models/vehicle.dart';
 
 class VehicleQuery {
-  const VehicleQuery({this.page=1, this.limit=20, this.search, this.category, this.brand, this.minPrice, this.maxPrice, this.year, this.fuelType, this.transmission});
+  const VehicleQuery({this.page=1, this.limit=20, this.search, this.category, this.brand, this.minPrice, this.maxPrice, this.year, this.fuelType, this.transmission, this.sort});
   final int page; final int limit; final String? search; final String? category; final String? brand;
   final double? minPrice; final double? maxPrice; final int? year; final String? fuelType; final String? transmission;
+  /// Nilai sort dari API: newest|oldest|price_asc|price_desc. Null = default server (newest).
+  final String? sort;
   Map<String,dynamic> toMap() => {
     'page':page,'limit':limit,
     if(search!=null && search!.isNotEmpty) 'search':search,
@@ -19,6 +21,7 @@ class VehicleQuery {
     if(year!=null) 'year':year,
     if(fuelType!=null) 'fuel_type':fuelType,
     if(transmission!=null) 'transmission':transmission,
+    if(sort!=null) 'sort':sort,
   };
 }
 
