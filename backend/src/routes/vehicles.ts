@@ -20,6 +20,14 @@ router.get('/', async (req, res) => {
   const year = req.query.year ? Number(req.query.year) : undefined;
   const fuel = req.query.fuel_type as string;
   const transmission = req.query.transmission as string;
+  // whitelist: sort key -> static ORDER BY fragment (never user text)
+  const SORTS: Record<string, string> = {
+    newest: 'v.created_at DESC',
+    oldest: 'v.created_at ASC',
+    price_asc: 'v.price ASC',
+    price_desc: 'v.price DESC',
+  };
+  const orderBy = SORTS[String(req.query.sort)] ?? SORTS.newest;
 
   const where: string[] = [];
   const params: any[] = [];
@@ -40,7 +48,7 @@ router.get('/', async (req, res) => {
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
   const countRow: any = await queryOne(`SELECT COUNT(*) as total FROM vehicles v ${whereSql}`, params);
   const total = Number(countRow?.total || 0);
-  const rows: any[] = await query(`SELECT v.*, c.name as category_name, c.slug as category_slug FROM vehicles v LEFT JOIN vehicle_categories c ON c.id=v.category_id ${whereSql} ORDER BY v.created_at DESC LIMIT ? OFFSET ?`, [...params, limit, offset]);
+  const rows: any[] = await query(`SELECT v.*, c.name as category_name, c.slug as category_slug FROM vehicles v LEFT JOIN vehicle_categories c ON c.id=v.category_id ${whereSql} ORDER BY ${orderBy} LIMIT ? OFFSET ?`, [...params, limit, offset]);
 
   // attach images + category
   const data = await Promise.all(rows.map(async (v) => {
