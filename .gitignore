@@ -63,3 +63,8 @@ uploads/
 # Prebuilt web (diambil dari GitHub Release via `make deploy-fetch-web`,
 # bukan dari git — lihat `make release-web`)
 /deploy/web/
+
+# Backend build artifact + artifact liar (bun.lock tak dipakai — package-lock.json kanon)
+backend/dist/
+backend/~/
+backend/bun.lock

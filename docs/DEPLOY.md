@@ -32,12 +32,11 @@ Flutter hanya dibutuhkan di **mesin dev** (untuk `make deploy-web` +
 `make release-web`): install SDK stable + `gh` (GitHub CLI, sudah login).
 
 <details>
-<summary>Catatan menghapus instalasi lama yang rootful</summary>
+<summary>Catatan migrasi dari deploy Podman lama</summary>
 
 Sebelumnya panduan ini berjalan dengan Podman. Bila VPS masih punya stack lama:
 
-- jalankan di akun lama: `podman compose down` + `systemctl --user disable --now yaw-docker-compose.service` (unit user) atau `systemctl disable --now yaw-docker-compose.service` (unit root, hapus dari /etc/systemd/system),
-- berhenti socket lama bila aktif: `systemctl --user disable --now podman.socket`,
+- jalankan di akun deploy lama: `podman compose down`, `systemctl --user disable --now yaw-compose.service`, `systemctl --user disable --now podman.socket`,
 - export data bila perlu (lihat §5 backup), lalu biarkan stack Docker baru
   membuat volume baru (db seed ulang login `admin@yaw.id/admin123`).
 </details>
