@@ -156,4 +156,51 @@ export async function initDb(): Promise<void> {
   } catch (e: any) {
     console.error('[initDb] seeding skipped/failed (API continues):', e?.message || e);
   }
+
+  // 5b) Dummy vehicle seed HARUS setelah seedDefaults agar kategori dasar
+  //     (SUV/Sports/Electric) sudah ada di DB fresh — file `002_dummy_vehicles.sql`
+  //     dijalankan SEKALI (marker di schema_migrations), sehingga bisa di-undo
+  //     manual (DELETE FROM vehicles WHERE slug IN (... daftar slug di 002))
+  //     tanpa muncul lagi saat start berikutnya.
+  try {
+    const dummyPath = path.resolve(process.cwd(), 'database/migrations/002_dummy_vehicles.sql');
+    const dummyFallback = path.resolve(process.cwd(), '../database/migrations/002_dummy_vehicles.sql');
+    const dummyFile = fs.existsSync(dummyPath) ? dummyPath : fs.existsSync(dummyFallback) ? dummyFallback : null;
+    if (dummyFile) {
+      await pool.query(
+        'CREATE TABLE IF NOT EXISTS schema_migrations (name VARCHAR(120) PRIMARY KEY, applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB'
+      );
+      const markerRows: any = await pool.query(
+        "SELECT name FROM schema_migrations WHERE name = '002_dummy_vehicles'"
+      );
+      const already = Array.isArray(markerRows) ? markerRows.length > 0 : false;
+      if (!already) {
+        const dsql = fs.readFileSync(dummyFile, 'utf8');
+        // strip comment lines, then naive split (tanpa ';' di dalam string)
+        const dstmts = dsql
+          .split(';')
+          .map((s) => s.replace(/(^|\n)\s*--[^\n]*/g, '').trim())
+          .filter((s) => s.length > 5);
+        for (const stmt of dstmts) {
+          let c: PoolConnection | undefined;
+          try {
+            c = await pool.getConnection();
+            await c.query(stmt);
+          } catch (e: any) {
+            console.error('[initDb] dummy seed statement failed:', String(e.message || '').slice(0, 200));
+          } finally {
+            if (c) c.release();
+          }
+        }
+        console.log('[initDb] dummy vehicle seed applied —', path.basename(dummyFile));
+      } else {
+        console.log('[initDb] dummy vehicle seed already applied (marker), skipped');
+      }
+      await pool.query(
+        "INSERT INTO schema_migrations (name) VALUES ('002_dummy_vehicles') ON DUPLICATE KEY UPDATE name = name"
+      );
+    }
+  } catch (e: any) {
+    console.error('[initDb] dummy seed skipped/failed (API continues):', e?.message || e);
+  }
  }
