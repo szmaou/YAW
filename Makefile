@@ -101,6 +101,7 @@ deploy-logs: ## Follow log backend (VPS)
 	podman compose logs -f backend
 
 deploy-verify: ## Curl health via nginx + backend langsung + petunjuk login seed (VPS)
-	curl -s http://localhost/api/health | head -c 500; echo
-	curl -s http://localhost:3002/api/health | head -c 500; echo
+	@PORT=$$(grep -E '^WEB_PORT=' .env 2>/dev/null | cut -d= -f2); PORT=$${PORT:-8080}; \
+	curl -s http://localhost:$${PORT}/api/health | head -c 500; echo; \
+	curl -s http://localhost:$${APP_PORT:-3002}/api/health | head -c 500; echo
 	@echo "Login seed: admin@yaw.id / admin123 (POST /api/v1/auth/login, ganti setelah masuk)."

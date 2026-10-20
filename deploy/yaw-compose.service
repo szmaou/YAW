@@ -1,18 +1,15 @@
 # Satu unit systemd untuk auto-start stack YAW saat boot (Podman Compose).
-# Jalur root (rootful) — sesuai docs/DEPLOY.md §1:
-#   cp deploy/yaw-compose.service /etc/systemd/system/
+# Rootless (user biasa) — sesuai docs/DEPLOY.md §1:
+#   mkdir -p ~/.config/systemd/user
+#   cp deploy/yaw-compose.service ~/.config/systemd/user/
 #   # sesuaikan WorkingDirectory ke folder checkout repo di VPS
-#   vim /etc/systemd/system/yaw-compose.service
-#   systemctl daemon-reload && systemctl enable --now yaw-compose.service
-#   systemctl status yaw-compose.service   # cek: active (exited), semua container Up
-#
-# Variant rootless (user biasa): salin ke ~/.config/systemd/user/ ganti
-# WorkingDirectory, lalu:
-#   systemctl --user daemon-reload && systemctl --user enable --now yaw-compose.service
-#   loginctl enable-linger $USER       # biarkan unit hidup tanpa sesi login
-#   echo 'net.ipv4.ip_unprivileged_port_start=80' > /etc/sysctl.d/99-podman.conf
-#   sysctl --system                     # sekali saja, jadi bisa bind port 80
-# Unit user butuh `systemctl --user enable --now podman.socket`.
+#   vim ~/.config/systemd/user/yaw-compose.service
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now yaw-compose.service
+#   loginctl enable-linger $USER       # unit tetap hidup tanpa sesi login
+#   systemctl --user enable --now podman.socket
+#   systemctl --user status yaw-compose.service   # cek: active (exited), semua container Up
+# Port host semua >1024 (compose.yaml WEB_PORT default 8080) — tanpa sudo/sysctl.
 
 [Unit]
 Description=YAW stack (MariaDB + backend + web) via Podman Compose
@@ -23,12 +20,12 @@ After=network-online.target podman.socket
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-# Sesuaikan ke folder checkout repo di VPS (mis. /root/yaw atau /home/<user>/yaw)
-WorkingDirectory=/root/yaw
+# Sesuaikan ke folder checkout repo di VPS (mis. /home/<user>/yaw)
+WorkingDirectory=%h/yaw
 ExecStart=/usr/bin/podman compose up -d --build
 ExecStop=/usr/bin/podman compose stop
 TimeoutStartSec=600
 TimeoutStopSec=180
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target

@@ -8,29 +8,37 @@ Host hanya butuh **podman** + **git** + **curl** — tanpa Flutter
 tanpa systemd unit manual, nginx host, maupun MariaDB native.
 Podman daemonless dan bisa jalan rootless.
 
-## 1. Prasyarat (sebagai user root di VPS)
+## 1. Prasyarat VPS (semua perintah sebagai user biasa — tanpa sudo)
 
 ```bash
+# Sekali saja, sebagai admin:
 apt update && apt install -y podman podman-compose curl git
+#   (podman-compose cadangan bila `podman compose` tak ada, lihat §9)
+
+# Selebihnya sebagai user biasa:
 podman --version          # butuh Podman 4.1+
 podman compose version    # bila gagal, pakai `podman-compose` (lihat §9)
-systemctl enable --now podman.socket   # socket rootful untuk `podman compose`
+systemctl --user enable --now podman.socket   # socket user untuk `podman compose`
+loginctl enable-linger $USER                  # container tetap hidup tanpa sesi login
 ```
 
-Sebagai root, bind port 80 dan akses socket tidak jadi masalah
-(tanpa sysctl tambahan, tanpa sudo di perintah mana pun).
+Stack **rootless**: semua port host >1024 (nginx web di `WEB_PORT` default
+`8080`, backend `3002`) — tidak perlu sysctl maupun sudo lagi. Bila tetap
+mau port 80, opsional sekali saja: `echo 'net.ipv4.ip_unprivileged_port_start=80' >
+/etc/sysctl.d/99-podman.conf && sudo sysctl --system`, lalu set `WEB_PORT=80` di `.env`.
 
 Flutter hanya dibutuhkan di **mesin dev** (untuk `make deploy-web` +
 `make release-web`): install SDK stable + `gh` (GitHub CLI, sudah login).
 
 <details>
-<summary>Catatan bila deploy sebagai user biasa (bukan root)</summary>
+<summary>Catatan menghapus instalasi lama yang rootful</summary>
 
-- `podman compose` rootless butuh user socket:
-  `systemctl --user enable --now podman.socket` +
-  `loginctl enable-linger $USER`.
-- User biasa tidak boleh bind port < 1024 — sekali saja sebagai admin:
-  `echo 'net.ipv4.ip_unprivileged_port_start=80' > /etc/sysctl.d/99-podman.conf && sysctl --system`.
+Sebelumnya panduan ini berjalan sebagai root. Bila VPS masih punya stack lama:
+
+- jalankan di akun lama: `podman compose down` + `systemctl disable --now yaw-compose.service` (hapus unit dari /etc/systemd/system),
+- berhenti `podman.socket` global bila aktif: `systemctl disable --now podman.socket`,
+- export data bila perlu (lihat §5 backup), lalu biarkan user baru
+  membuat volume baru (db seed ulang login `admin@yaw.id/admin123`).
 </details>
 
 ## 2. Env deploy
@@ -43,6 +51,7 @@ Isi penting: `DB_PASSWORD` + `DB_ROOT_PASSWORD` (acak, `openssl rand -base64 24`
 `JWT_SECRET` 32+ karakter acak (`openssl rand -base64 48`),
 `CORS_ORIGIN=https://<domain>` dan `API_BASE_URL=https://<domain>/api/v1`
 (wajib sama persis dengan URL yang dibuka user — di-bake ke web saat build).
+`WEB_PORT` (default 8080) = port host nginx web; rootless tetap di atas 1024.
 
 Catatan: `DB_HOST` harus tetap `db` (nama service compose); container backend
 selalu listen di port internal `3002` (`APP_PORT` hanya mengatur port host).
@@ -77,8 +86,10 @@ dibuat otomatis dari `DB_*`), lalu backend menjalankan migrasi + seed otomatis
 
 ```bash
 make deploy-verify
-curl -s -X POST http://localhost/api/v1/auth/login -H 'Content-Type: application/json' -d '{"email":"admin@yaw.id","password":"admin123"}'
+curl -s -X POST http://localhost:8080/api/v1/auth/login -H 'Content-Type: application/json' -d '{"email":"admin@yaw.id","password":"admin123"}'
 ```
+
+(Web di port `WEB_PORT` — default `8080`. Ganti sesuai `.env` bila diubah.)
 
 ## 5. Operasional
 
@@ -105,7 +116,7 @@ server {
     server_name <domain>;
     ssl_certificate /etc/letsencrypt/live/<domain>/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/<domain>/privkey.pem;
-    location / { proxy_pass http://127.0.0.1:80; proxy_set_header Host $host; proxy_set_header X-Forwarded-Proto https; }
+    location / { proxy_pass http://127.0.0.1:8080; proxy_set_header Host $host; proxy_set_header X-Forwarded-Proto https; }
 }
 ```
 
@@ -121,29 +132,25 @@ rm -rf deploy/web && make deploy-fetch-web  # ambil build terbaru (lewati bila v
 make deploy-up      # rebuild image backend bila perlu + restart semua
 ```
 
-## 8. Auto-start saat boot (systemd)
+## 8. Auto-start saat boot (systemd user unit)
 
-Stack bisa otomatis naik lagi setelah VPS reboot dengan unit yang sudah
-disediakan: `deploy/yaw-compose.service` (root dan rootless — lihat komentar
-di dalam file untuk kedua jalurnya).
-
-Jalur root (tanpa sudo, sesuai §1):
+Stack naik otomatis setelah VPS reboot dengan unit rootless yang sudah
+disediakan: `deploy/yaw-compose.service` (unit **user** — tanpa sudo):
 
 ```bash
-cp deploy/yaw-compose.service /etc/systemd/system/
-# edit WorkingDirectory ke folder checkout repo di VPS (mis. /root/yaw)
-systemctl daemon-reload
-systemctl enable --now yaw-compose.service
-systemctl status yaw-compose.service   # cek active (exited) + `podman compose ps`
+mkdir -p ~/.config/systemd/user
+cp deploy/yaw-compose.service ~/.config/systemd/user/
+# edit WorkingDirectory ke folder checkout repo di VPS (mis. /home/<user>/yaw)
+vim ~/.config/systemd/user/yaw-compose.service
+systemctl --user daemon-reload
+systemctl --user enable --now yaw-compose.service
+loginctl enable-linger $USER   # sekali, penting: unit hidup tanpa sesi login
+systemctl --user status yaw-compose.service   # cek active (exited) + podman compose ps
 ```
 
 Restart env `.env` tidak ikut berubah saat boot. `git pull` **tidak** dijalankan
 unit (deploy tetap manual lewat §7 agar tak ada kejutan saat reboot); yang
 dilakukan unit hanyalah `podman compose up -d --build`.
-
-Variant rootless (user biasa): salin unit ke `~/.config/systemd/user/`,
-`systemctl --user enable --now yaw-compose.service`, dan penting:
-`loginctl enable-linger $USER` supaya unit tetap jalan tanpa sesi login aktif.
 
 ## 9. Bila `podman compose` tidak tersedia
 
