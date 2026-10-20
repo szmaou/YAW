@@ -16,7 +16,9 @@ mariadb -u yaw_user -p'yaw123' -h 127.0.0.1 -e "SHOW TABLES FROM yaw;"  # verify
 
 # 2) Backend
 cd backend && cp .env.example .env && npm install && npm run dev   # http://localhost:3002
-# seeded automatically on first empty-DB start: admin@yaw.id/admin123 (admin), user@yaw.id/user123 (user) + 3 categories
+# seeded automatically on first empty-DB start: admin@yaw.id/admin123 (admin), user@yaw.id/user123 (user) + 5 categories (base 3 + MPV, City Car)
+# dummy vehicles: database/migrations/002_dummy_vehicles.sql — runs ONCE after seedDefaults (marker in schema_migrations).
+#   undo: DELETE FROM vehicles WHERE slug IN (... slugs in 002); dummies do NOT re-seed while the marker row exists.
 npm run seed   # idempotent re-seed
 npm run build && npm start  # production: tsc -> node dist/app.js
 
