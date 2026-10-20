@@ -1,31 +1,32 @@
-# YAW — Deploy Podman (Compose: db + backend + web)
+# YAW — Deploy Docker (Compose: db + backend + web)
 
 Panduan ringkas Bahasa Indonesia untuk VPS Linux (Ubuntu).
-Satu `podman compose up` menjalankan MariaDB 11.4, backend Node, dan nginx
+Satu `docker compose up` menjalankan MariaDB 11.4, backend Node, dan nginx
 yang menyajikan Flutter web + proxy `/api/` dan `/uploads/` ke backend.
-Host hanya butuh **podman** + **git** + **curl** — tanpa Flutter
+Host hanya butuh **docker** + **git** + **curl** — tanpa Flutter
 (build web dikerjakan di mesin dev, diambil via GitHub Release),
 tanpa systemd unit manual, nginx host, maupun MariaDB native.
-Podman daemonless dan bisa jalan rootless.
+Docker rootless — daemon jalan sebagai user biasa.
 
-## 1. Prasyarat VPS (semua perintah sebagai user biasa — tanpa sudo)
+## 1. Prasyarat VPS
 
 ```bash
-# Sekali saja, sebagai admin:
-apt update && apt install -y podman podman-compose curl git
-#   (podman-compose cadangan bila `podman compose` tak ada, lihat §9)
+# Sekali saja, sebagai user biasa (install Docker Engine rootless):
+sudo apt update && sudo apt install -y curl git uidmap dbus-user-session
+curl -fsSL https://get.docker.com/rootless | sh
+systemctl --user enable --now docker
+loginctl enable-linger $USER              # daemon + container tetap hidup tanpa sesi login
 
-# Selebihnya sebagai user biasa:
-podman --version          # butuh Podman 4.1+
-podman compose version    # bila gagal, pakai `podman-compose` (lihat §9)
-systemctl --user enable --now podman.socket   # socket user untuk `podman compose`
-loginctl enable-linger $USER                  # container tetap hidup tanpa sesi login
+# Cek (tambahkan PATH bila binary di ~/bin):
+docker --version
+docker compose version    # bila gagal, lihat §9 (docker-compose v1)
 ```
 
 Stack **rootless**: semua port host >1024 (nginx web di `WEB_PORT` default
-`8080`, backend `3002`) — tidak perlu sysctl maupun sudo lagi. Bila tetap
-mau port 80, opsional sekali saja: `echo 'net.ipv4.ip_unprivileged_port_start=80' >
-/etc/sysctl.d/99-podman.conf && sudo sysctl --system`, lalu set `WEB_PORT=80` di `.env`.
+`8080`, backend `3002`) — tidak perlu sysctl maupun sudo lagi (setelah
+install di atas). Bila tetap mau port 80, opsional sekali saja:
+`echo 'net.ipv4.ip_unprivileged_port_start=80' | sudo tee /etc/sysctl.d/99-docker.conf && sudo sysctl --system`,
+lalu set `WEB_PORT=80` di `.env`.
 
 Flutter hanya dibutuhkan di **mesin dev** (untuk `make deploy-web` +
 `make release-web`): install SDK stable + `gh` (GitHub CLI, sudah login).
@@ -33,18 +34,18 @@ Flutter hanya dibutuhkan di **mesin dev** (untuk `make deploy-web` +
 <details>
 <summary>Catatan menghapus instalasi lama yang rootful</summary>
 
-Sebelumnya panduan ini berjalan sebagai root. Bila VPS masih punya stack lama:
+Sebelumnya panduan ini berjalan dengan Podman. Bila VPS masih punya stack lama:
 
-- jalankan di akun lama: `podman compose down` + `systemctl disable --now yaw-compose.service` (hapus unit dari /etc/systemd/system),
-- berhenti `podman.socket` global bila aktif: `systemctl disable --now podman.socket`,
-- export data bila perlu (lihat §5 backup), lalu biarkan user baru
+- jalankan di akun lama: `podman compose down` + `systemctl --user disable --now yaw-docker-compose.service` (unit user) atau `systemctl disable --now yaw-docker-compose.service` (unit root, hapus dari /etc/systemd/system),
+- berhenti socket lama bila aktif: `systemctl --user disable --now podman.socket`,
+- export data bila perlu (lihat §5 backup), lalu biarkan stack Docker baru
   membuat volume baru (db seed ulang login `admin@yaw.id/admin123`).
 </details>
 
 ## 2. Env deploy
 
 ```bash
-cp .env.podman.example .env   # lalu isi nilai CHANGE_ME
+cp .env.docker.example .env   # lalu isi nilai CHANGE_ME
 ```
 
 Isi penting: `DB_PASSWORD` + `DB_ROOT_PASSWORD` (acak, `openssl rand -base64 24`),
@@ -63,7 +64,7 @@ Hasil build web **tidak di-commit** — dipublish sebagai asset GitHub Release
 
 ```bash
 # --- di mesin dev ---
-cp .env.podman.example .env   # isi API_BASE_URL domain produksi
+cp .env.docker.example .env   # isi API_BASE_URL domain produksi
 make deploy-web    # flutter build web -o deploy/web (API_BASE_URL di-bake) + hapus *.symbols
 rm -f .env
 make release-web   # tarball + `gh release create` (tag default v<versi-pubspec>, override: VERSION=vX)
@@ -72,10 +73,10 @@ make release-web   # tarball + `gh release create` (tag default v<versi-pubspec>
 ```bash
 # --- di VPS ---
 git pull
-cp .env.podman.example .env   # sekali saja, lalu isi secret (DB_*, JWT_SECRET)
+cp .env.docker.example .env   # sekali saja, lalu isi secret (DB_*, JWT_SECRET)
 make deploy-fetch-web  # download + extract release terbaru ke deploy/web (butuh gh/curl)
-make deploy-up         # podman compose up -d --build
-podman compose ps
+make deploy-up         # docker compose up -d --build
+docker compose ps
 ```
 
 Boot pertama: service `db` dibuat dari image `mariadb:11.4` (database + user
@@ -94,16 +95,16 @@ curl -s -X POST http://localhost:8080/api/v1/auth/login -H 'Content-Type: applic
 ## 5. Operasional
 
 ```bash
-make deploy-logs      # podman compose logs -f backend
+make deploy-logs      # docker compose logs -f backend
 make deploy-restart   # restart backend + web
 make deploy-backend   # rebuild + up ulang db + backend saja
 make deploy-down      # stop semua (volume db-data/uploads tetap ada)
-podman compose exec db mariadb -u root -p -e "SHOW TABLES FROM yaw;"
+docker compose exec db mariadb -u root -p -e "SHOW TABLES FROM yaw;"
 ```
 
-Backup data: `podman run --rm -v yaw_db-data:/data -v $PWD:/b alpine tar czf /b/db-backup.tgz /data`
-Uploads: `podman run --rm -v yaw_uploads:/data -v $PWD:/b alpine tar czf /b/uploads-backup.tgz /data`
-(Nama volume aktual: cek `podman volume ls`; prefix mengikuti nama folder project.)
+Backup data: `docker run --rm -v yaw_db-data:/data -v $PWD:/b alpine tar czf /b/db-backup.tgz /data`
+Uploads: `docker run --rm -v yaw_uploads:/data -v $PWD:/b alpine tar czf /b/uploads-backup.tgz /data`
+(Nama volume aktual: cek `docker volume ls`; prefix mengikuti nama folder project.)
 
 ## 6. TLS
 
@@ -135,32 +136,32 @@ make deploy-up      # rebuild image backend bila perlu + restart semua
 ## 8. Auto-start saat boot (systemd user unit)
 
 Stack naik otomatis setelah VPS reboot dengan unit rootless yang sudah
-disediakan: `deploy/yaw-compose.service` (unit **user** — tanpa sudo):
+disediakan: `deploy/yaw-docker-compose.service` (unit **user** — tanpa sudo):
 
 ```bash
 mkdir -p ~/.config/systemd/user
-cp deploy/yaw-compose.service ~/.config/systemd/user/
+cp deploy/yaw-docker-compose.service ~/.config/systemd/user/
 # edit WorkingDirectory ke folder checkout repo di VPS (mis. /home/<user>/yaw)
-vim ~/.config/systemd/user/yaw-compose.service
+vim ~/.config/systemd/user/yaw-docker-compose.service
 systemctl --user daemon-reload
-systemctl --user enable --now yaw-compose.service
+systemctl --user enable --now yaw-docker-compose.service
 loginctl enable-linger $USER   # sekali, penting: unit hidup tanpa sesi login
-systemctl --user status yaw-compose.service   # cek active (exited) + podman compose ps
+systemctl --user status yaw-docker-compose.service   # cek active (exited) + docker compose ps
 ```
 
 Restart env `.env` tidak ikut berubah saat boot. `git pull` **tidak** dijalankan
 unit (deploy tetap manual lewat §7 agar tak ada kejutan saat reboot); yang
-dilakukan unit hanyalah `podman compose up -d --build`.
+dilakukan unit hanyalah `docker compose up -d --build`.
 
-## 9. Bila `podman compose` tidak tersedia
+## 9. Bila plugin `docker compose` tidak tersedia
 
-Podman lama (< 4.1) tidak punya subcommand `compose` bawaan. Pakai paket
-`podman-compose` (Python) sebagai pengganti 1:1:
+Docker lama (< 20.10 / tanpa plugin compose) tidak punya subcommand `compose`.
+Pakai `docker-compose` v1 sebagai pengganti 1:1:
 
 ```bash
-apt install podman-compose  # atau: pip install podman-compose
-podman-compose up -d --build
+pip install docker-compose   # atau binary release v2 dari docker/compose
+docker-compose up -d --build
 ```
 
-Semua target `make deploy-*` memakai `podman compose`; bila memakai
-`podman-compose`, jalankan perintah compose manual sesuai contoh di atas.
+Semua target `make deploy-*` memakai `docker compose`; bila memakai
+`docker-compose`, jalankan perintah compose manual sesuai contoh di atas.

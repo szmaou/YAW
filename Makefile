@@ -1,8 +1,8 @@
-# YAW — Flutter + Express + MariaDB (deploy Podman Compose + testing)
-# `make help` lists all targets. Fokus: deploy Podman + testing.
+# YAW — Flutter + Express + MariaDB (deploy Docker Compose + testing)
+# `make help` lists all targets. Fokus: deploy Docker + testing.
 # Dev lokal: MariaDB native (systemctl), npm (backend), flutter (app).
 # Deploy: build web + Release di mesin dev (butuh flutter + gh),
-#   jalan DI VPS setelah fetch release (butuh podman + git + curl).
+#   jalan DI VPS setelah fetch release (butuh docker + git + curl).
 
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
@@ -12,7 +12,7 @@ BACKEND_DIR := backend
 # ── help ──────────────────────────────────────────────────────────
 .PHONY: help
 help: ## Show this help
-	@echo "YAW — make targets (deploy Podman + testing)"
+	@echo "YAW — make targets (deploy Docker + testing)"
 	@echo ""
 	@grep -E '^[a-zA-Z0-9_/-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-22s\033[0m %s\n", $$1, $$2}'
 	@echo ""
@@ -40,13 +40,13 @@ backend-health: ## Curl health + login (butuh backend jalan)
 	@curl -s http://localhost:3002/api/health | head -c 500; echo
 	@curl -s -X POST http://localhost:3002/api/v1/auth/login -H 'Content-Type: application/json' -d '{"email":"admin@yaw.id","password":"admin123"}' | head -c 700; echo
 
-# ── deploy (production Podman Compose: db + backend + web) ──
+# ── deploy (production Docker Compose: db + backend + web) ──
 # Web tidak di-commit: dev build → publish ke GitHub Release → VPS fetch.
 .PHONY: deploy-backend deploy-web release-web release-apk deploy-fetch-web deploy-up deploy-down deploy-restart deploy-logs deploy-verify
 
 deploy-web: ## Build Flutter web ke deploy/web (di mesin dev; butuh API_BASE_URL dari .env)
 	@if [ -f .env ]; then set -a; . ./.env; set +a; fi; \
-	if [ -z "$${API_BASE_URL:-}" ]; then echo "API_BASE_URL kosong — salin .env.podman.example ke .env lalu isi API_BASE_URL"; exit 1; fi; \
+	if [ -z "$${API_BASE_URL:-}" ]; then echo "API_BASE_URL kosong — salin .env.docker.example ke .env lalu isi API_BASE_URL"; exit 1; fi; \
 	flutter build web --release --no-web-resources-cdn -o deploy/web --dart-define=API_BASE_URL=$${API_BASE_URL}
 	# Hapus file .symbols (debug, ~6MB) — tidak dibutuhkan runtime:
 	find deploy/web -name '*.symbols' -delete
@@ -54,7 +54,7 @@ deploy-web: ## Build Flutter web ke deploy/web (di mesin dev; butuh API_BASE_URL
 
 release-apk: ## Build APK + upload ke GitHub Release (dev; butuh API_BASE_URL dari .env + gh login)
 	@if [ -f .env ]; then set -a; . ./.env; set +a; fi; \
-	if [ -z "$${API_BASE_URL:-}" ]; then echo "API_BASE_URL kosong — salin .env.podman.example ke .env lalu isi API_BASE_URL"; exit 1; fi; \
+	if [ -z "$${API_BASE_URL:-}" ]; then echo "API_BASE_URL kosong — salin .env.docker.example ke .env lalu isi API_BASE_URL"; exit 1; fi; \
 	flutter build apk --release --dart-define=API_BASE_URL=$${API_BASE_URL} && \
 	TAG="v$$(grep '^version:' pubspec.yaml | awk '{print $$2}')" && \
 	APK="/tmp/yaw-$${TAG}.apk" && cp build/app/outputs/flutter-apk/app-release.apk "$$APK" && \
@@ -84,21 +84,21 @@ deploy-fetch-web: ## Download + extract build web dari GitHub Release terbaru (V
 	ls deploy/web/index.html && du -sh deploy/web
 
 deploy-backend: ## Build + jalankan ulang service backend+db (VPS)
-	podman compose up -d --build db backend
+	docker compose up -d --build db backend
 
 deploy-up: ## Jalankan semua service (db+backend+web) (VPS)
-	@if [ ! -f .env ]; then echo ".env tidak ada — salin dulu: cp .env.podman.example .env"; exit 1; fi
+	@if [ ! -f .env ]; then echo ".env tidak ada — salin dulu: cp .env.docker.example .env"; exit 1; fi
 	@if [ ! -f deploy/web/index.html ]; then echo "deploy/web kosong — di mesin dev: make deploy-web release-web; di sini: make deploy-fetch-web"; exit 1; fi
-	podman compose up -d --build
+	docker compose up -d --build
 
 deploy-down: ## Hentikan semua service (data db-data/uploads tetap ada)
-	podman compose down
+	docker compose down
 
 deploy-restart: ## Restart service backend + web (VPS)
-	podman compose restart backend web
+	docker compose restart backend web
 
 deploy-logs: ## Follow log backend (VPS)
-	podman compose logs -f backend
+	docker compose logs -f backend
 
 deploy-verify: ## Curl health via nginx + backend langsung + petunjuk login seed (VPS)
 	@PORT=$$(grep -E '^WEB_PORT=' .env 2>/dev/null | cut -d= -f2); PORT=$${PORT:-8080}; \
